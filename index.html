@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diagnostic Partner Hub</title>
+<style>
+:root{--bg:#eef2f7;--card:#fff;--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--brand:#0d6efd;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--info:#0891b2}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.hdr{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#0b3a66;color:#fff;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.hdr .brand{font-weight:700;font-size:16px}
+.hdr .sp{flex:1}
+.pill{background:rgba(255,255,255,.18);padding:4px 10px;border-radius:999px;font-size:12px}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.nav button{border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+.nav button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.card .v{font-size:21px;font-weight:700;margin-top:4px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.panel h3{margin:0 0 12px;font-size:15px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid #cbd5e1;background:#f1f5f9;color:#334155;white-space:nowrap}
+.s-Pending{background:#fef3c7;border-color:#fde68a;color:#92400e}
+.s-HandedovertoLab{background:#dbeafe;border-color:#bfdbfe;color:#1e40af}
+.s-Samplecollected{background:#e0e7ff;border-color:#c7d2fe;color:#3730a3}
+.s-Inprocess{background:#fae8ff;border-color:#f5d0fe;color:#86198f}
+.s-Reportready{background:#dcfce7;border-color:#bbf7d0;color:#166534}
+.s-Delivered{background:#d1fae5;border-color:#a7f3d0;color:#065f46}
+.s-Cancelled{background:#fee2e2;border-color:#fecaca;color:#991b1b}
+.btn{border:1px solid var(--brand);background:var(--brand);color:#fff;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+.btn.ghost{background:#fff;color:var(--brand)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+input,select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.login .box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;max-width:390px;width:100%}
+.demo{background:#f8fafc;border:1px dashed var(--line);border-radius:10px;padding:10px;font-size:12px;margin-top:14px}
+.demo code{background:#e2e8f0;padding:1px 5px;border-radius:4px}
+.bars{display:flex;gap:10px;align-items:flex-end;height:120px;padding-top:8px}
+.bars .b{flex:1;background:linear-gradient(#0d6efd,#60a5fa);border-radius:6px 6px 0 0;position:relative;min-height:3px}
+.bars .b span{position:absolute;bottom:-18px;left:-6px;right:-6px;text-align:center;font-size:10px;color:var(--mut)}
+.mut{color:var(--mut)}
+.right{text-align:right}
+.err{color:var(--bad);font-size:13px;margin-top:8px}
+.empty{color:var(--mut);padding:14px;text-align:center}
+.chip{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:6px;padding:1px 6px;font-size:11px;margin:1px}
+@media(max-width:640px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+var KEY="dph_app_v1";
+var ST=["Pending","Handed over to Lab","Sample collected","In process","Report ready","Delivered","Cancelled"];
+
+function seed(){
+  return {
+    settings:{labName:"Diagnostic Partner Hub",commission:20,template:"Hi {name}, your reports for {tests} are ready. Download: {link}"},
+    tests:[
+      {c:"CBC",n:"Complete Blood Count",p:300},
+      {c:"LIPID",n:"Lipid Profile",p:600},
+      {c:"THY",n:"Thyroid (T3,T4,TSH)",p:500},
+      {c:"VITD",n:"Vitamin D (25-OH)",p:900},
+      {c:"FULL",n:"Full Body Checkup",p:2500},
+      {c:"USG",n:"USG Abdomen",p:800},
+      {c:"XRAY",n:"X-Ray Chest",p:400}
+    ],
+    clinics:[
+      {id:"C1",name:"Sunrise Clinic",contact:"Dr. Khan",phone:"9876500011",city:"Virar",status:"approved"},
+      {id:"C2",name:"City Care Clinic",contact:"Dr. Patil",phone:"9876500022",city:"Nallasopara",status:"approved"},
+      {id:"C3",name:"Green Leaf Clinic",contact:"Dr. Singh",phone:"9876500033",city:"Vasai",status:"pending"}
+    ],
+    centres:[
+      {id:"D1",name:"Virar Diagnostics Centre",contact:"Sunil More",phone:"9876500044",city:"Virar"},
+      {id:"D2",name:"Suburban Diagnostics",contact:"Ravi Nair",phone:"9876500055",city:"Virar"}
+    ],
+    users:[
+      {id:"U1",name:"Head Office",email:"ho@lab.com",pass:"ho123",role:"HO",org:""},
+      {id:"U2",name:"Sunrise Clinic",email:"clinic@lab.com",pass:"clinic123",role:"CLINIC",org:"C1"},
+      {id:"U3",name:"Virar Diagnostics",email:"centre@lab.com",pass:"centre123",role:"CENTRE",org:"D1"}
+    ],
+    bookings:[
+      mk("BK-1001","Aarohi Sharma",34,"F",9876511111,"Dr. Khan","C1","D1",["CBC","THY"],"Routine","Patient Visit Lab","Handed over to Lab","",20),
+      mk("BK-1002","Ramesh Gupta",58,"M",9876522222,"Dr. Patil","C2","D1",["FULL"],"Urgent","Partner Home Collection","Sample collected","",20),
+      mk("BK-1003","Sunita More",41,"F",9876533333,"Dr. Khan","C1","D2",["LIPID","VITD"],"Routine","Patient Visit Lab","Report ready","https://reports.lalpathlabs.com/r/1003",20),
+      mk("BK-1004","Imran Sheikh",27,"M",9876544444,"Dr. Singh","C1","D1",["USG"],"Routine","Patient Visit Lab","Pending","",20)
+    ]
+  };
+}
+var PRICES={CBC:300,LIPID:600,THY:500,VITD:900,FULL:2500,USG:800,XRAY:400};
+function mk(id,patient,age,gender,phone,doctor,clinic,centre,tests,urgency,collection,status,reportLink,pct){
+  var cost=0; tests.forEach(function(c){ cost+=(PRICES[c]||0); });
+  var now=Date.now();
+  return {id:id,track:"TRK-"+id.slice(3),patient:patient,age:age,gender:gender,phone:phone,doctor:doctor,clinic:clinic,centre:centre,tests:tests,urgency:urgency,collection:collection,status:status,reportLink:reportLink,commissionPct:pct,cost:cost,created:now,history:[{status:status,at:now,by:"seed"}]};
+}
+var db_tests=[];
+
+var db=null;
+try{ db=JSON.parse(localStorage.getItem(KEY)); }catch(e){ db=null; }
+if(!db){ db=seed(); }
+db_tests=db.tests;
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(db)); }catch(e){} }
+function uid(p){ return p+"-"+Math.random().toString(36).slice(2,7); }
+function inr(n){ return "\u20B9"+Number(n||0).toLocaleString("en-IN"); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+function el(id){ return document.getElementById(id); }
+function testName(c){ var t=db.tests.find(function(x){return x.c===c;}); return t?t.n:c; }
+function clinicName(id){ var c=db.clinics.find(function(x){return x.id===id;}); return c?c.name:"-"; }
+function centreName(id){ var d=db.centres.find(function(x){return x.id===id;}); return d?d.name:"-"; }
+function statusClass(s){ return "s-"+s.replace(/[^A-Za-z]/g,""); }
+function commission(b){ return Math.round(b.cost*(b.commissionPct||0)/100); }
+function log(b,status,by){ b.status=status; b.history.push({status:status,at:Date.now(),by:by}); }
+
+var S={u:null,tab:"",hov:"overview"};
+
+function login(email,pass){
+  var u=db.users.find(function(x){return x.email.toLowerCase()===String(email).toLowerCase() && x.pass===pass;});
+  if(!u) return false;
+  S.u=u; S.tab=defaultTab(u.role); render(); return true;
+}
+function defaultTab(role){ return role==="HO"?"overview":(role==="CLINIC"?"new":"incoming"); }
+function logout(){ S.u=null; render(); }
+
+function render(){
+  var app=el("app");
+  if(!S.u){ app.innerHTML=viewLogin(); return; }
+  if(S.u.role==="HO") app.innerHTML=viewHO();
+  else if(S.u.role==="CLINIC") app.innerHTML=viewClinic();
+  else app.innerHTML=viewCentre();
+}
+
+/* ---------- LOGIN ---------- */
+function viewLogin(){
+  return '<div class="login"><div class="box">'
+    +'<h2 style="margin:0 0 4px">Diagnostic Partner Hub</h2>'
+    +'<p class="mut" style="margin:0 0 14px">Sign in to your dashboard</p>'
+    +'<label>Email</label><input id="li_email" type="email" placeholder="you@example.com">'
+    +'<label>Password</label><input id="li_pass" type="password" placeholder="password" onkeydown="if(event.key===\'Enter\')doLogin()">'
+    +'<div class="err" id="li_err"></div>'
+    +'<div style="margin-top:14px"><button class="btn" style="width:100%" onclick="doLogin()">Sign in</button></div>'
+    +'<div class="demo"><b>Demo accounts</b><br>'
+    +'HO: <code>ho@lab.com</code> / <code>ho123</code><br>'
+    +'Clinic: <code>clinic@lab.com</code> / <code>clinic123</code><br>'
+    +'Diagnostic Centre: <code>centre@lab.com</code> / <code>centre123</code></div>'
+    +'</div></div>';
+}
+function doLogin(){
+  var e=el("li_email").value, p=el("li_pass").value;
+  if(!login(e,p)){ el("li_err").textContent="Invalid email or password. Try a demo account below."; }
+}
+
+/* ---------- SHELL ---------- */
+function header(roleLabel){
+  return '<div class="hdr"><div class="brand">'+esc(db.settings.labName)+'</div>'
+    +'<span class="pill">'+esc(S.u.name)+'</span>'
+    +'<span class="pill">'+esc(roleLabel)+'</span>'
+    +'<div class="sp"></div>'
+    +'<button class="btn ghost sm" onclick="logout()">Sign out</button></div>';
+}
+function nav(tabs){
+  return '<div class="nav">'+tabs.map(function(t){
+    return '<button class="'+(S.tab===t[0]?"on":"")+'" onclick="go(\''+t[0]+'\')">'+t[1]+'</button>';
+  }).join("")+'</div>';
+}
+function go(t){ S.tab=t; render(); }
+
+/* ---------- HO ---------- */
+function viewHO(){
+  var tabs=[["overview","Overview"],["bookings","All Bookings"],["clinics","Clinics"],["centres","Diagnostic Centres"],["onboard","Onboarding"],["users","Users & Roles"],["settings","Settings"]];
+  return header("Head Office")
+    +'<div class="wrap">'+nav(tabs)+hoBody()+'</div>';
+}
+function hoBody(){
+  if(S.tab==="bookings") return hoBookings();
+  if(S.tab==="clinics") return hoClinics();
+  if(S.tab==="centres") return hoCentres();
+  if(S.tab==="onboard") return hoOnboard();
+  if(S.tab==="users") return hoUsers();
+  if(S.tab==="settings") return hoSettings();
+  return hoOverview();
+}
+function kpi(k,v){ return '<div class="card"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+function hoOverview(){
+  var bs=db.bookings, rev=bs.reduce(function(a,b){return a+b.cost;},0);
+  var comm=bs.reduce(function(a,b){return a+commission(b);},0);
+  var pending=bs.filter(function(b){return b.status==="Pending";}).length;
+  var handed=bs.filter(function(b){return b.status==="Handed over to Lab";}).length;
+  var ready=bs.filter(function(b){return b.status==="Report ready";}).length;
+  var delivered=bs.filter(function(b){return b.status==="Delivered";}).length;
+  var byStatus=ST.map(function(s){ return [s, bs.filter(function(b){return b.status===s;}).length]; });
+  var max=Math.max.apply(null,byStatus.map(function(x){return x[1];}).concat([1]));
+  var bars=byStatus.map(function(x){
+    return '<div class="b" style="height:'+(x[1]/max*100)+'%" title="'+x[0]+': '+x[1]+'"><span>'+x[1]+'</span></div>';
+  }).join("");
+  var byClinic=db.clinics.map(function(c){
+    var n=bs.filter(function(b){return b.clinic===c.id;}).length;
+    var r=bs.filter(function(b){return b.clinic===c.id;}).reduce(function(a,b){return a+b.cost;},0);
+    return [c.name,n,r];
+  });
+  return '<div class="cards">'
+    +kpi("Total Bookings",bs.length)+kpi("Total Revenue",inr(rev))+kpi("Commission",inr(comm))
+    +kpi("Pending Handover",pending)+kpi("Reports Ready",ready)+kpi("Delivered",delivered)
+    +'</div>'
+    +'<div class="panel"><h3>Bookings by status</h3><div class="bars">'+bars+'</div><div style="height:22px"></div></div>'
+    +'<div class="panel"><h3>By clinic</h3><table><tr><th>Clinic</th><th class="right">Bookings</th><th class="right">Revenue</th></tr>'
+    +byClinic.map(function(x){return '<tr><td>'+esc(x[0])+'</td><td class="right">'+x[1]+'</td><td class="right">'+inr(x[2])+'</td></tr>';}).join("")
+    +'</table></div>';
+}
+function hoBookings(){
+  var rows=db.bookings.slice().sort(function(a,b){return b.created-a.created;}).map(function(b){
+    return '<tr><td><b>'+esc(b.id)+'</b><br><span class="mut">'+esc(b.track)+'</span></td>'
+      +'<td>'+esc(b.patient)+'<br><span class="mut">'+b.age+"/"+esc(b.gender)+'</span></td>'
+      +'<td>'+esc(clinicName(b.clinic))+'</td><td>'+esc(centreName(b.centre))+'</td>'
+      +'<td>'+b.tests.map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join("")+'</td>'
+      +'<td>'+inr(b.cost)+'</td><td><span class="badge '+statusClass(b.status)+'">'+esc(b.status)+'</span></td></tr>';
+  }).join("");
+  return '<div class="panel"><h3>All bookings ('+db.bookings.length+')</h3><div style="overflow:auto"><table>'
+    +'<tr><th>Booking</th><th>Patient</th><th>Clinic</th><th>Centre</th><th>Tests</th><th>Cost</th><th>Status</th></tr>'
+    +rows+'</table></div></div>';
+}
+function hoClinics(){
+  return '<div class="panel"><h3>Clinics</h3><table><tr><th>Name</th><th>Contact</th><th>City</th><th>Status</th></tr>'
+    +db.clinics.map(function(c){return '<tr><td>'+esc(c.name)+'</td><td>'+esc(c.contact)+'</td><td>'+esc(c.city)+'</td><td><span class="badge">'+esc(c.status)+'</span></td></tr>';}).join("")
+    +'</table></div>';
+}
+function hoCentres(){
+  return '<div class="panel"><h3>Diagnostic Centres</h3><table><tr><th>Name</th><th>Contact</th><th>City</th></tr>'
+    +db.centres.map(function(c){return '<tr><td>'+esc(c.name)+'</td><td>'+esc(c.contact)+'</td><td>'+esc(c.city)+'</td></tr>';}).join("")
+    +'</table></div>';
+}
+function hoOnboard(){
+  var pend=db.clinics.filter(function(c){return c.status==="pending";});
+  var rows=pend.length?pend.map(function(c){
+    return '<tr><td>'+esc(c.name)+'</td><td>'+esc(c.contact)+'</td><td>'+esc(c.city)+'</td>'
+      +'<td class="right"><button class="btn sm" onclick="approveClinic(\''+c.id+'\')">Approve</button> '
+      +'<button class="btn ghost sm" onclick="rejectClinic(\''+c.id+'\')">Reject</button></td></tr>';
+  }).join(""):'<tr><td colspan="4" class="empty">No pending applications</td></tr>';
+  return '<div class="panel"><h3>Channel-partner onboarding — pending approvals</h3><table>'
+    +'<tr><th>Organisation</th><th>Contact</th><th>City</th><th></th></tr>'+rows+'</table></div>';
+}
+function approveClinic(id){ var c=db.clinics.find(function(x){return x.id===id;}); if(c){c.status="approved"; save(); render();} }
+function rejectClinic(id){ var c=db.clinics.find(function(x){return x.id===id;}); if(c){c.status="rejected"; save(); render();} }
+function hoUsers(){
+  var rows=db.users.map(function(u){
+    return '<tr><td>'+esc(u.name)+'</td><td>'+esc(u.email)+'</td><td>'+esc(u.role)+'</td></tr>';
+  }).join("");
+  return '<div class="panel"><h3>Users & roles</h3><table><tr><th>Name</th><th>Email</th><th>Role</th></tr>'+rows+'</table></div>'
+    +'<div class="panel"><h3>Add user</h3><div class="row">'
+    +'<div><label>Name</label><input id="nu_name"></div>'
+    +'<div><label>Email</label><input id="nu_email"></div>'
+    +'<div><label>Password</label><input id="nu_pass"></div>'
+    +'<div><label>Role</label><select id="nu_role"><option value="HO">Head Office</option><option value="CLINIC">Clinic</option><option value="CENTRE">Diagnostic Centre</option></select></div>'
+    +'</div><div style="margin-top:12px"><button class="btn" onclick="addUser()">Add user</button></div></div>';
+}
+function addUser(){
+  var n=el("nu_name").value.trim(), e=el("nu_email").value.trim(), p=el("nu_pass").value, r=el("nu_role").value;
+  if(!n||!e||!p) return;
+  db.users.push({id:uid("U"),name:n,email:e,pass:p,role:r,org:""});
+  save(); render();
+}
+function hoSettings(){
+  return '<div class="panel"><h3>Settings</h3>'
+    +'<label>Lab / business name</label><input id="st_name" value="'+esc(db.settings.labName)+'">'
+    +'<label>Default commission %</label><input id="st_comm" type="number" value="'+db.settings.commission+'">'
+    +'<label>WhatsApp message template</label><textarea id="st_tpl" rows="2">'+esc(db.settings.template)+'</textarea>'
+    +'<div style="margin-top:12px"><button class="btn" onclick="saveSettings()">Save</button></div></div>';
+}
+function saveSettings(){
+  db.settings.labName=el("st_name").value||db.settings.labName;
+  db.settings.commission=Number(el("st_comm").value)||db.settings.commission;
+  db.settings.template=el("st_tpl").value;
+  save(); render();
+}
+
+/* ---------- CLINIC ---------- */
+function viewClinic(){
+  var tabs=[["new","New Booking"],["mine","My Bookings"],["comm","Commission"]];
+  return header("Clinic")+'<div class="wrap">'+nav(tabs)+clinicBody()+'</div>';
+}
+function clinicBody(){
+  if(S.tab==="mine") return clinicMine();
+  if(S.tab==="comm") return clinicCommission();
+  return clinicNew();
+}
+function clinicNew(){
+  var opts=db.tests.map(function(t){return '<option value="'+t.c+'">'+esc(t.n)+' — '+inr(t.p)+'</option>';}).join("");
+  var centres=db.centres.map(function(c){return '<option value="'+c.id+'">'+esc(c.name)+'</option>';}).join("");
+  return '<div class="panel"><h3>Refer &amp; book a test</h3>'
+    +'<div class="row">'
+    +'<div><label>Patient name</label><input id="b_patient"></div>'
+    +'<div><label>Phone</label><input id="b_phone"></div>'
+    +'<div><label>Age</label><input id="b_age" type="number"></div>'
+    +'<div><label>Gender</label><select id="b_gender"><option>F</option><option>M</option><option>Other</option></select></div>'
+    +'<div><label>Referring doctor</label><input id="b_doctor"></div>'
+    +'<div><label>Urgency</label><select id="b_urgency"><option>Routine</option><option>Urgent</option></select></div>'
+    +'<div><label>Collection type</label><select id="b_collection"><option>Patient Visit Lab</option><option>Partner Home Collection</option></select></div>'
+    +'<div><label>Diagnostic centre</label><select id="b_centre">'+centres+'</select></div>'
+    +'</div>'
+    +'<label>Tests (hold Ctrl/Cmd to pick several)</label><select id="b_tests" multiple size="5">'+opts+'</select>'
+    +'<label>Notes</label><textarea id="b_notes" rows="2"></textarea>'
+    +'<div class="err" id="b_err"></div>'
+    +'<div style="margin-top:12px"><button class="btn" onclick="createBooking()">Create booking</button></div></div>';
+}
+function createBooking(){
+  var sel=el("b_tests"), tests=[]; for(var i=0;i<sel.options.length;i++){ if(sel.options[i].selected) tests.push(sel.options[i].value); }
+  var patient=el("b_patient").value.trim(), phone=el("b_phone").value.trim();
+  if(!patient||!phone||!tests.length){ el("b_err").textContent="Fill patient name, phone and select at least one test."; return; }
+  var cost=0; tests.forEach(function(c){ var t=db.tests.find(function(x){return x.c===c;}); if(t) cost+=t.p; });
+  var id="BK-"+(1000+db.bookings.length+1);
+  var b={id:id,track:"TRK-"+id.slice(3),patient:patient,age:el("b_age").value,gender:el("b_gender").value,phone:phone,doctor:el("b_doctor").value,clinic:S.u.org,centre:el("b_centre").value,tests:tests,urgency:el("b_urgency").value,collection:el("b_collection").value,notes:el("b_notes").value,status:"Pending",reportLink:"",commissionPct:db.settings.commission,cost:cost,created:Date.now(),history:[]};
+  b.history.push({status:"Pending",at:Date.now(),by:S.u.name});
+  db.bookings.push(b); save(); S.tab="mine"; render();
+}
+function clinicMine(){
+  var mine=db.bookings.filter(function(b){return b.clinic===S.u.org;}).sort(function(a,b){return b.created-a.created;});
+  if(!mine.length) return '<div class="panel"><div class="empty">No bookings yet. Create one from “New Booking”.</div></div>';
+  var rows=mine.map(function(b){
+    var act=b.status==="Pending" ? '<button class="btn sm" onclick="handover(\''+b.id+'\')">Hand over</button>' : '';
+    var rep=b.reportLink ? ' <a class="btn ghost sm" href="'+esc(b.reportLink)+'" target="_blank" rel="noopener">Report</a>' : '';
+    return '<tr><td><b>'+esc(b.id)+'</b></td><td>'+esc(b.patient)+'</td>'
+      +'<td>'+b.tests.map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join("")+'</td>'
+      +'<td>'+inr(b.cost)+'</td><td><span class="badge '+statusClass(b.status)+'">'+esc(b.status)+'</span></td>'
+      +'<td class="right">'+act+rep+'</td></tr>';
+  }).join("");
+  return '<div class="panel"><h3>My referrals</h3><div style="overflow:auto"><table>'
+    +'<tr><th>Booking</th><th>Patient</th><th>Tests</th><th>Cost</th><th>Status</th><th></th></tr>'+rows+'</table></div></div>';
+}
+function handover(id){
+  var b=db.bookings.find(function(x){return x.id===id;}); if(!b) return;
+  log(b,"Handed over to Lab",S.u.name); save(); render();
+}
+function clinicCommission(){
+  var mine=db.bookings.filter(function(b){return b.clinic===S.u.org;});
+  var total=mine.reduce(function(a,b){return a+commission(b);},0);
+  var rows=mine.map(function(b){return '<tr><td>'+esc(b.id)+'</td><td>'+esc(b.patient)+'</td><td>'+inr(b.cost)+'</td><td>'+b.commissionPct+'%</td><td class="right">'+inr(commission(b))+'</td></tr>';}).join("");
+  return '<div class="cards">'+kpi("Referrals",mine.length)+kpi("Commission earned",inr(total))+'</div>'
+    +'<div class="panel"><h3>Commission ledger</h3><table><tr><th>Booking</th><th>Patient</th><th>Cost</th><th>Rate</th><th class="right">Commission</th></tr>'+rows+'</table></div>';
+}
+
+/* ---------- DIAGNOSTIC CENTRE ---------- */
+function viewCentre(){
+  var tabs=[["incoming","Incoming Samples"],["processing","In Process"],["reports","Reports"]];
+  return header("Diagnostic Centre")+'<div class="wrap">'+nav(tabs)+centreBody()+'</div>';
+}
+function centreBody(){
+  if(S.tab==="processing") return centreProcessing();
+  if(S.tab==="reports") return centreReports();
+  return centreIncoming();
+}
+function centreIncoming(){
+  var q=db.bookings.filter(function(b){return b.centre===S.u.org && b.status==="Handed over to Lab";});
+  if(!q.length) return '<div class="panel"><div class="empty">No samples waiting. Handed-over bookings appear here.</div></div>';
+  var rows=q.map(function(b){
+    return '<tr><td><b>'+esc(b.id)+'</b></td><td>'+esc(b.patient)+'<br><span class="mut">'+b.age+"/"+esc(b.gender)+'</span></td>'
+      +'<td>'+esc(b.phone)+'</td><td>'+b.tests.map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join("")+'</td>'
+      +'<td>'+esc(b.urgency)+'</td><td class="right"><button class="btn sm" onclick="markCollected(\''+b.id+'\')">Sample collected</button></td></tr>';
+  }).join("");
+  return '<div class="panel"><h3>Incoming samples ('+q.length+')</h3><div style="overflow:auto"><table>'
+    +'<tr><th>Booking</th><th>Patient</th><th>Phone</th><th>Tests</th><th>Urgency</th><th></th></tr>'+rows+'</table></div></div>';
+}
+function markCollected(id){ var b=db.bookings.find(function(x){return x.id===id;}); if(b){ log(b,"Sample collected",S.u.name); save(); S.tab="processing"; render(); } }
+function centreProcessing(){
+  var q=db.bookings.filter(function(b){return b.centre===S.u.org && (b.status==="Sample collected"||b.status==="In process");});
+  if(!q.length) return '<div class="panel"><div class="empty">Nothing in process.</div></div>';
+  var rows=q.map(function(b){
+    var act = b.status==="Sample collected" ? '<button class="btn ghost sm" onclick="markInProcess(\''+b.id+'\')">Start processing</button>' : '';
+    return '<tr><td><b>'+esc(b.id)+'</b></td><td>'+esc(b.patient)+'</td><td>'+b.tests.map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join("")+'</td>'
+      +'<td><span class="badge '+statusClass(b.status)+'">'+esc(b.status)+'</span></td><td class="right">'+act+'</td></tr>';
+  }).join("");
+  return '<div class="panel"><h3>In process</h3><table><tr><th>Booking</th><th>Patient</th><th>Tests</th><th>Status</th><th></th></tr>'+rows+'</table></div>';
+}
+function markInProcess(id){ var b=db.bookings.find(function(x){return x.id===id;}); if(b){ log(b,"In process",S.u.name); save(); render(); } }
+function centreReports(){
+  var q=db.bookings.filter(function(b){return b.centre===S.u.org && (b.status==="In process"||b.status==="Report ready");});
+  var rows=q.map(function(b){
+    if(b.status==="In process"){
+      return '<tr><td><b>'+esc(b.id)+'</b></td><td>'+esc(b.patient)+'</td><td>'
+        +'<input id="rl_'+b.id+'" placeholder="Report link (valid 7 days)" style="min-width:200px"></td>'
+        +'<td class="right"><button class="btn sm" onclick="submitReport(\''+b.id+'\')">Submit report</button></td></tr>';
+    }
+    return '<tr><td><b>'+esc(b.id)+'</b></td><td>'+esc(b.patient)+'</td>'
+      +'<td><a href="'+esc(b.reportLink)+'" target="_blank" rel="noopener">'+esc(b.reportLink)+'</a></td>'
+      +'<td class="right"><button class="btn sm" onclick="markDelivered(\''+b.id+'\')">Mark delivered</button></td></tr>';
+  }).join("");
+  return '<div class="panel"><h3>Report submission queue</h3><table><tr><th>Booking</th><th>Patient</th><th>Report</th><th></th></tr>'
+    +(rows||'<tr><td colspan="4" class="empty">Nothing awaiting a report.</td></tr>')+'</table></div>';
+}
+function submitReport(id){
+  var b=db.bookings.find(function(x){return x.id===id;}); if(!b) return;
+  var link=el("rl_"+id).value.trim();
+  if(!link){ alert("Enter the report link first."); return; }
+  b.reportLink=link; log(b,"Report ready",S.u.name); save(); render();
+}
+function markDelivered(id){ var b=db.bookings.find(function(x){return x.id===id;}); if(b){ log(b,"Delivered",S.u.name); save(); render(); } }
+
+/* boot */
+render();
+</script>
+</body>
+</html>

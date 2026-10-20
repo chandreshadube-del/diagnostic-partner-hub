@@ -12,6 +12,23 @@ weekly backups in Drive. No external stack.
 `Index.html` is not in this repository yet; the deployment serves it from the
 Apps Script project.
 
+## Current state of the live project
+
+Verified against the bound Google Sheet on 2026-10-20:
+
+- `setup()` has been run — `Leads` carries the appended `StatusChangedAt` and
+  `NextScanDate` columns, and all 14 of `NEW_CONFIG_ROWS` are present in `Config`
+- the web app is **deployed**: the `APP_URL` row of `Config` holds a live
+  `/exec` URL (not reproduced here — the manifest sets `ANYONE_ANONYMOUS`
+  access, so that URL is a publicly reachable entry point to an app holding
+  patient data, and it does not belong in a public repository)
+- `MSG_MODE` is `MANUAL`, so no WhatsApp API credentials are in play yet
+- `PII_RETENTION_ENABLED` is `FALSE` — nothing is being scrubbed on a default
+- the `Audit` tab has a real trail, so the app has been exercised
+- `Reports`, `Messages`, `Transfers` and `Allocations` are still empty: no
+  report has been uploaded, no message logged, and the settlement chain has not
+  yet been run end to end
+
 ## What `Code.gs` covers
 
 Roughly in file order:

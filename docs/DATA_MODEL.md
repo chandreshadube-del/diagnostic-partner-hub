@@ -1,16 +1,40 @@
 # DCP master seed — data model
 
-Structure of `DCP_App_Master_Seed_v1.xlsx`, the 22-tab Google Sheet that backs the
-Apps Script app in `apps-script/`. Tab names match the `SH` map at the top of
-`Code.gs`; column names match the header row the app reads by name.
+Structure of the Google Sheet `DCP_App_Master_Seed_v1`, which the Apps Script app
+in `apps-script/` reads through its `SPREADSHEET_ID` script property. Tab names
+match the `SH` map at the top of `Code.gs`; column names match the header row the
+app reads by name.
 
-**The workbook itself is not in this repository.** It carries live patient records
-and staff credentials — see [PRIVACY.md](PRIVACY.md). Row counts below are from the
-seed as received on 2026-10-20 and exclude the header row.
+Read from the live sheet on 2026-10-20. Row counts exclude the header.
+
+**The sheet is not mirrored in this repository.** It carries live patient records
+and staff credentials — see [PRIVACY.md](PRIVACY.md). No values are reproduced
+below, only structure.
+
+## The live sheet is past `setup()`
+
+`setup()` has been run against this sheet and the web app is deployed, so the live
+structure is ahead of the `DCP_App_Master_Seed_v1.xlsx` file the app was built
+from. Four differences, all of them expected:
+
+| What | In the xlsx | Live now |
+| --- | --- | --- |
+| `Leads` columns | 51 | 53 — `setup()` appends `StatusChangedAt` and `NextScanDate` |
+| `Config` rows | 35 | 49 — all 14 of `NEW_CONFIG_ROWS` appended, and `APP_URL` filled in |
+| `Audit` rows | none | 19 — a real trail exists, starting with the setup run |
+| `Reports`, `Messages`, `Transfers`, `Allocations` | 1 each | 0 — the xlsx count was a blank trailing row; these tabs are genuinely empty |
+
+Everything else — all 22 tab names, in the same order, and every column name on
+the other 21 tabs — is identical to the xlsx.
+
+`Audit` runs `AUD-00001`–`AUD-00020` with `AUD-00009` absent, which is consistent
+with `nextId_` reserving an ID under lock for a write that then failed.
+
+## Tabs
 
 | Tab | Rows | Cols | Contents |
 | --- | ---: | ---: | --- |
-| [Config](#config) | 35 | 6 | Reference |
+| [Config](#config) | 49 | 6 | Reference |
 | [Users](#users) | 37 | 17 | PII + credentials |
 | [Regions](#regions) | 4 | 4 | Reference |
 | [Areas](#areas) | 7 | 6 | Reference |
@@ -20,16 +44,16 @@ seed as received on 2026-10-20 and exclude the header row.
 | [Tests](#tests) | 34 | 11 | Reference |
 | [Packages](#packages) | 18 | 10 | Reference |
 | [RateCards](#ratecards) | 117 | 18 | Commercial |
-| [Leads](#leads) | 1190 | 51 | Patient PII |
+| [Leads](#leads) | 1190 | 53 | Patient PII |
 | [LeadTests](#leadtests) | 2870 | 17 | Linked to patient |
-| [Reports](#reports) | 1 | 12 | Linked to patient |
-| [Messages](#messages) | 1 | 12 | Patient PII |
+| [Reports](#reports) | 0 | 12 | Linked to patient |
+| [Messages](#messages) | 0 | 12 | Patient PII |
 | [Templates](#templates) | 10 | 9 | Reference |
 | [Statements](#statements) | 3 | 12 | Commercial |
 | [StatementLines](#statementlines) | 474 | 13 | Commercial |
-| [Transfers](#transfers) | 1 | 12 | Commercial |
-| [Allocations](#allocations) | 1 | 7 | Commercial |
-| [Audit](#audit) | 1 | 12 | Mixed |
+| [Transfers](#transfers) | 0 | 12 | Commercial |
+| [Allocations](#allocations) | 0 | 7 | Commercial |
+| [Audit](#audit) | 19 | 12 | Mixed |
 | [ClinicFootfall](#clinicfootfall) | 36 | 14 | Reference |
 | [DuplicateReviews](#duplicatereviews) | 69 | 13 | Patient PII |
 
@@ -37,7 +61,7 @@ seed as received on 2026-10-20 and exclude the header row.
 
 ## Config
 
-35 rows · 6 columns · Reference
+49 rows · 6 columns · Reference
 
 ```
 Key
@@ -252,7 +276,7 @@ State
 
 ## Leads
 
-1190 rows · 51 columns · Patient PII
+1190 rows · 53 columns · Patient PII
 
 > Holds patient name, mobile, age, pincode, collection address, spouse name.
 
@@ -308,6 +332,8 @@ ClosedAt
 OptOut
 LastUpdatedAt
 LastUpdatedBy
+StatusChangedAt
+NextScanDate
 ```
 
 ## LeadTests
@@ -338,7 +364,7 @@ Active
 
 ## Reports
 
-1 rows · 12 columns · Linked to patient
+0 rows · 12 columns · Linked to patient
 
 > Holds report file handles per lead.
 
@@ -359,7 +385,7 @@ Notes
 
 ## Messages
 
-1 rows · 12 columns · Patient PII
+0 rows · 12 columns · Patient PII
 
 > Holds recipient mobile numbers.
 
@@ -439,7 +465,7 @@ FlagNote
 
 ## Transfers
 
-1 rows · 12 columns · Commercial
+0 rows · 12 columns · Commercial
 
 > Holds bank UTRs, TDS.
 
@@ -460,7 +486,7 @@ Notes
 
 ## Allocations
 
-1 rows · 7 columns · Commercial
+0 rows · 7 columns · Commercial
 
 > Holds payout allocation.
 
@@ -476,7 +502,7 @@ AllocatedBy
 
 ## Audit
 
-1 rows · 12 columns · Mixed
+19 rows · 12 columns · Mixed
 
 > Holds before/after JSON may embed patient fields.
 

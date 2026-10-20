@@ -22,10 +22,16 @@ Committing the source data here would undo all of it.
 
 ## Where the data lives instead
 
-The workbook stays in Google Drive as the bound Google Sheet the Apps Script
-project reads through `SPREADSHEET_ID`. `docs/DATA_MODEL.md` records its
-structure — tab names, column names and row counts — which is what the code
-needs to be reviewable. No values are reproduced.
+The system of record is the Google Sheet `DCP_App_Master_Seed_v1`, which the
+Apps Script project reads through its `SPREADSHEET_ID` property. The uploaded
+xlsx is a snapshot of it from before `setup()` ran. `DATA_MODEL.md` records the
+live sheet's structure — tab names, column names and row counts — which is what
+the code needs to be reviewable. No values are reproduced.
+
+Two things from the sheet are also kept out of this repository on purpose: the
+`APP_URL` deployment URL, because the manifest grants `ANYONE_ANONYMOUS` access
+and so that URL is a live entry point to an app holding patient data, and
+`ADMIN_OWNER_EMAIL`.
 
 ## If seed data is needed in the repo
 

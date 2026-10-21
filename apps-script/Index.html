@@ -1305,6 +1305,8 @@ VIEWS.dashboard = async main => {
   await Promise.all([loadMonthly(), loadD()]);
 };
 
+/* NB: pass arrays of html`` results straight into the next html`` — never .join('') them first. Joining turns the Raw
+ * objects into plain strings, which the tag then escapes, and the table shows up as literal markup. */
 function renderMonthlyTable(d) {
   if (!d || !d.months || !d.months.length) {
     $('#dm-body').innerHTML = html`<div class="card empty">No data.</div>`.s;
@@ -1323,9 +1325,9 @@ function renderMonthlyTable(d) {
     { key: 'gynoMarginPct', label: 'Gyno Margin',       unit: '%',   fmt: v => v === null ? '—' : v + '%', highlight: false },
     { key: 'gynoRevLakhs',  label: 'Gyno Rev.',         unit: 'INR', fmt: v => v === null ? '—' : v.toFixed(2) + ' L' }
   ];
-  const hdr = html`<tr><th style="min-width:140px">GynoDcp${months.length > 1 ? months.length : ''}</th>${months.map(m => html`<th class="num" colspan="1">${m.label} <span class="small muted" style="font-weight:normal">▼</span></th>`).join('')}</tr>`;
+  const hdr = html`<tr><th style="min-width:140px">GynoDcp${months.length > 1 ? months.length : ''}</th>${months.map(m => html`<th class="num" colspan="1">${m.label} <span class="small muted" style="font-weight:normal">▼</span></th>`)}</tr>`;
   // Sub-header row for MTD/%/INR labels
-  const subHdr = html`<tr class="muted small"><td></td>${months.map(() => html`<td class="num"></td>`).join('')}</tr>`;
+  const subHdr = html`<tr class="muted small"><td></td>${months.map(() => html`<td class="num"></td>`)}</tr>`;
   const rows = metrics.map(mt => {
     const cells = months.map((m, i) => {
       const val = mt.fmt(m[mt.key]);
@@ -1337,9 +1339,9 @@ function renderMonthlyTable(d) {
       const isAdoption = mt.highlight && m[mt.key] !== null && m[mt.key] < 50;
       const style = isAdoption ? 'background:var(--bad-bg,#fff0f0);color:var(--bad)' : '';
       return html`<td class="num" style="${style}">${val}</td>`;
-    }).join('');
+    });
     return html`<tr><td>${mt.label} <span class="small muted">${mt.unit}</span></td>${cells}</tr>`;
-  }).join('');
+  });
   $('#dm-body').innerHTML = html`<div class="card" style="padding:0"><div class="tblwrap"><table class="tbl" style="font-size:13px">
     ${hdr}${rows}
   </table></div></div>`.s;

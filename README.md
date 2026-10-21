@@ -11,7 +11,7 @@ collected.
 | Path | What it is |
 | --- | --- |
 | `apps-script/` | the production app, **v3.0.13** — ten server modules, the `Index.html` client and the manifest ([deploy, upgrade, changes](apps-script/README.md)) |
-| `tests/` | `npm test` runs the real server sources against mocked Google services and a synthetic workbook |
+| `tests/` | `npm test` runs the real server sources against mocked Google services and a synthetic workbook; `npm run test:e2e` drives the real page in Chromium |
 | `docs/DCP_Role_Workflows.md` | who does what, and when: the eight stages, the four roles, the settlement chain, every branch off the main path |
 | `docs/DATA_MODEL.md` | the 22 tabs of the Google Sheet — columns and row counts, and what v3.0.13 adds |
 | `docs/PRIVACY.md` | why the seed workbook is not committed, and one known erasure gap |

@@ -65,29 +65,39 @@ Most thresholds are rows in the `Config` tab, with `CONFIG_DEFAULTS` in `00_core
 ## Tests
 
 ```
-npm test        # Node >= 20, no dependencies
+npm test            # server logic — Node >= 20, no dependencies
+npm run test:e2e    # the real page in Chromium — needs Playwright and its browser (npx playwright install chromium)
 ```
 
-`tests/` loads these exact `.gs` files, unmodified, into a Node `vm` against in-memory stand-ins for Sheets,
+**`npm test`** loads these exact `.gs` files, unmodified, into a Node `vm` against in-memory stand-ins for Sheets,
 Drive, Cache, Lock, Mail and the rest (`tests/gas-mock.js`), then drives the real `api()` dispatcher as each role
 over a **synthetic** workbook (`tests/fixtures/` — invented data, the real 22-tab structure). It covers auth and
 lockout, lead capture and validation, every status branch, multi-visit scans, report uploads, settlement with FIFO
 allocation, dashboards, DPDP erasure, the scheduled jobs and the webhook.
 
+**`npm run test:e2e`** serves the real `Index.html` and stands in for Google's `google.script.run` with a small shim
+(`tests/e2e/bridge.js`) that forwards each call to that same real `api()`. It then clicks through a lead's whole life
+in Chromium as all four roles — first sign-in, capture with a prescription photo, the duplicate warning, call → book →
+schedule, lab progress, payment, report upload, settlement and closure — visits every screen of every role, checks the
+capture form on a 390px phone, and fails on any console error, failed request, unexpected server refusal, or markup
+leaking into the visible text. Screenshots go to `E2E_SHOTS` (default: the OS temp dir).
+
 The mocks reproduce the Apps Script behaviours the code depends on, including signed bytes from
 `Utilities.base64Decode`, Sheets coercing typed strings to dates and numbers unless a column is text-formatted,
-a non-re-entrant script lock, and `setValues` rejecting a block of the wrong shape. They are not Google, so a pass
-here is strong evidence, not a substitute for opening the deployed app once.
+a non-re-entrant script lock, and `setValues` rejecting a block of the wrong shape. Neither suite is Google: they do
+not exercise HtmlService's sandboxed iframe, real Sheets latency or Apps Script quotas, so a pass is strong evidence,
+not a substitute for opening the deployed app once.
 
 ## Changes from the v3.0.13 files as received
 
-Two defects found by the tests are fixed, and one behaviour change was requested. If you maintain the project in the
-Apps Script editor, paste in `80_triggers_setup.gs`, `70_dashboard.gs` and `60_admin.gs`. `APP_VERSION` is unchanged;
-the other seven modules and `Index.html` are byte-identical to what was supplied.
+Defects found by the tests are fixed, and one behaviour change was requested. If you maintain the project in the
+Apps Script editor, paste in `80_triggers_setup.gs`, `70_dashboard.gs`, `60_admin.gs` and `Index.html`. `APP_VERSION`
+is unchanged; the other seven modules are byte-identical to what was supplied.
 
 - **`80_triggers_setup.gs` — `setup()` no longer resets the Admin password on a re-run.** It issued a fresh temporary password to the owner every time it ran, but the app's own messages tell users to "run setup() again" to pick up new columns. The Audit tab on the live sheet records six passwords issued with the note `setup()` (from `setup()` itself or the menu item, which share it). It now issues one only if the Audit log has no earlier `setup()` password.
 - **`70_dashboard.gs` — the month-over-month table read two columns that don't exist.** `Leads.PatientGender` and `Leads.PatientAmountRs`. *Male Test* was always 0 (every test counted as female) and *Gyno Margin %* was always blank. They now use `Gender` and `ExpectedPatientPrice`.
 - **`60_admin.gs` — erasure and the retention scrub now move the prescription photo to the Drive trash** and clear its reference (requested). An erasure whose photo cannot be trashed is refused and changes nothing; see `docs/PRIVACY.md`.
+- **`Index.html` — the Admin dashboard's month-over-month table showed raw markup instead of a table.** `renderMonthlyTable` called `.join('')` on arrays of `html` fragments, turning them into plain strings that the page's own escaping helper then displayed as text. Four `.join('')` calls removed, plus a one-line warning. Found by running the page in a browser; the server tests cannot see it.
 - **`80_triggers_setup.gs` — the weekly job's retention scrub now takes the script lock and writes its audit entry.** It rewrote `Leads` rows unlocked and never flushed its audit buffer, so a scheduled purge left no record. Found while testing the photo change.
 
 Not changed, for your decision: see the pull request description.

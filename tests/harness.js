@@ -46,9 +46,11 @@ function createApp(opts) {
     ctx: ctx, ev: ev, files: files,
     json: expr => JSON.parse(ev('JSON.stringify(' + expr + ')') || 'null'),
     /** The real dispatcher: api(token, action, payload) -> parsed {ok,data|error,code}. */
-    call(token, action, payload) {
+    call(token, action, payload) { return JSON.parse(app.callRaw(token, action, payload)); },
+    /** Same, but the raw JSON string — exactly what google.script.run delivers to the page. */
+    callRaw(token, action, payload) {
       ctx.__t = token; ctx.__a = action; ctx.__p = JSON.stringify(payload === undefined ? {} : payload);
-      return JSON.parse(ev('api(__t, __a, JSON.parse(__p))'));
+      return ev('api(__t, __a, JSON.parse(__p))');
     },
     /** Sign in and return the session token (throws with the server's message on failure). */
     login(email, password) {

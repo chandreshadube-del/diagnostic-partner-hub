@@ -1,0 +1,15 @@
+# Seed and export data — the DCP workbook carries live patient records and
+# staff password hashes. See docs/PRIVACY.md before adding any of it here.
+*.xlsx
+*.xls
+*.csv
+data/
+seed/
+
+# Apps Script local tooling
+.clasp.json
+.clasprc.json
+node_modules/
+
+# OS noise
+.DS_Store

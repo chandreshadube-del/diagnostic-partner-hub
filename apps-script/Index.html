@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gynoveda DCP</title>
+<style>
+:root{
+  --plum:#6b2257; --plum-2:#8a3473; --plum-50:#f8eef5; --plum-100:#efd9e8;
+  --ink:#1f1a1d; --ink-2:#4a4247; --muted:#7a7177; --line:#e7e1e5; --line-2:#d9d0d6;
+  --bg:#f7f5f6; --card:#ffffff;
+  --good:#1f7a4d; --good-50:#e8f5ee; --warn:#a15c00; --warn-50:#fff4e0; --bad:#b42318; --bad-50:#fdecea;
+  --info:#1d5fa8; --info-50:#e8f1fb; --grey-50:#f1eef0;
+  --r:10px; --r-sm:7px; --shadow:0 1px 2px rgba(31,26,29,.06),0 4px 14px rgba(31,26,29,.05);
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{overflow-x:hidden}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);-webkit-text-size-adjust:100%}
+a{color:var(--plum-2)}
+button,input,select,textarea{font:inherit;color:inherit}
+/* Any screen sets fixed pixel widths on filter inputs for desktop (e.g. style="width:280px");
+   this clamps them to their row on narrow phones instead of forcing a horizontal scroll.
+   max-width always wins over width in the box-size calc, inline style included. */
+input,select,textarea{max-width:100%}
+/* Below iPhone's zoom-triggering 16px threshold, tapping any field zoomed the whole page in;
+   bump just the touch breakpoint so desktop keeps its tighter 14px look. */
+@media (max-width:760px){input,select,textarea{font-size:16px}}
+/* Coarse pointer = touch. Widens tap targets without changing the mouse/desktop sizing,
+   and removes the ~300ms double-tap-to-zoom delay on every interactive control. */
+@media (pointer:coarse){
+  .btn{min-height:44px}
+  .btn-sm{min-height:38px;padding:7px 12px}
+  .nav button{padding:14px 14px 12px}
+  .check input,input[type=checkbox],input[type=radio]{width:20px;height:20px}
+  .btn,.btn-sm,.btn-link,.nav button,.tabs button,.list .item,.pick .opt,select,.x{touch-action:manipulation}
+  .tbl td{padding:11px 10px}
+}
+h1,h2,h3,h4{margin:0;line-height:1.25}
+h2{font-size:18px;font-weight:650}
+h3{font-size:15px;font-weight:650}
+h4{font-size:13px;font-weight:650;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em}
+small,.small{font-size:12px}
+.muted{color:var(--muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+.hide{display:none!important}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row.between{justify-content:space-between}
+.col{display:flex;flex-direction:column;gap:8px}
+.grow{flex:1 1 auto;min-width:0}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g5{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:760px){.g2,.g3,.g4,.g5{grid-template-columns:1fr}}
+@media (min-width:761px) and (max-width:1100px){.g4,.g5{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Shell */
+.topbar{position:sticky;top:0;z-index:20;background:var(--plum);color:#fff;display:flex;align-items:center;gap:14px;padding:10px 18px;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.brand{font-weight:700;letter-spacing:.01em;font-size:15px;white-space:nowrap}
+.brand span{opacity:.75;font-weight:500;margin-left:6px}
+.who{margin-left:auto;text-align:right;font-size:12px;line-height:1.25;opacity:.95}
+.who b{font-weight:600;font-size:13px}
+.topbar .btn-ghost{color:#fff;border-color:rgba(255,255,255,.35)}
+.nav{position:sticky;top:48px;z-index:15;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:2px;overflow-x:auto;padding:0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.nav::-webkit-scrollbar{display:none}
+.nav button{border:0;background:none;padding:12px 12px 10px;border-bottom:2px solid transparent;color:var(--ink-2);white-space:nowrap;cursor:pointer;font-weight:550}
+.nav button.on{color:var(--plum);border-bottom-color:var(--plum)}
+.nav .count{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--plum-50);color:var(--plum);font-size:11px;text-align:center}
+main{max-width:1320px;margin:0 auto;padding:18px}
+@media (max-width:760px){main{padding:12px}.topbar{padding:10px 12px;gap:8px}.who .org{display:none}.brand span{display:none}
+  .who{min-width:0;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.topbar .btn-sm{padding:5px 8px;flex:none}}
+
+/* Cards & controls */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.card+.card{margin-top:12px}
+.grid>.card,.row>.card{margin-top:0}
+.card.flat{box-shadow:none}
+.section{margin-top:16px}
+.section>h4{margin-bottom:8px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-2);font-weight:550}
+label.f>span.req::after{content:" *";color:var(--bad)}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=datetime-local],input[type=tel],input[type=search],select,textarea{
+  width:100%;padding:9px 10px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:#fff;outline:none;min-height:38px}
+textarea{min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--plum-2);box-shadow:0 0 0 3px var(--plum-100)}
+input[type=checkbox],input[type=radio]{width:17px;height:17px;accent-color:var(--plum)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink);font-weight:450;cursor:pointer}
+.check input{margin-top:1px;flex:0 0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--plum);background:var(--plum);color:#fff;border-radius:var(--r-sm);padding:8px 14px;cursor:pointer;font-weight:600;min-height:38px;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--plum-2)}
+.btn:disabled,.btn[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--plum);border-color:var(--line-2)}
+.btn-ghost:hover{background:var(--plum-50)}
+.btn-sm{padding:4px 9px;min-height:30px;font-size:12.5px}
+.btn-danger{background:var(--bad);border-color:var(--bad)}
+.btn-danger:hover{background:#912018}
+.btn-wa{background:#1f8f4e;border-color:#1f8f4e}
+.btn-wa:hover{background:#18763f}
+.btn-link{background:none;border:0;color:var(--plum-2);padding:0;cursor:pointer;font-weight:550;text-decoration:underline}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:var(--r-sm);overflow:hidden}
+.seg label{padding:8px 14px;cursor:pointer;border-right:1px solid var(--line-2);user-select:none;font-weight:550}
+.seg label:last-child{border-right:0}
+.seg input{display:none}
+.seg input:checked+span{color:var(--plum)}
+.seg label:has(input:checked){background:var(--plum-50)}
+
+/* Chips & badges */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--grey-50);color:var(--ink-2);white-space:nowrap}
+.chip.plum{background:var(--plum-50);color:var(--plum)}
+.chip.good{background:var(--good-50);color:var(--good)}
+.chip.warn{background:var(--warn-50);color:var(--warn)}
+.chip.bad{background:var(--bad-50);color:var(--bad)}
+.chip.info{background:var(--info-50);color:var(--info)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+
+/* Tables & lists */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:650;padding:8px 10px;border-bottom:1px solid var(--line);background:#fcfbfc;position:sticky;top:0}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr.click{cursor:pointer}
+.tbl tr.click:hover td{background:var(--plum-50)}
+.geo-row .chev{display:inline-block;width:12px;color:var(--ink-2)}
+.geo-2 td:first-child{padding-left:30px}
+.geo-3 td:first-child{padding-left:50px}
+.geo-3{background:var(--bg)}
+.tbl td.num,.tbl th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tblwrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:#fff;max-height:70vh;-webkit-overflow-scrolling:touch}
+.list .item{display:flex;gap:12px;align-items:flex-start;padding:12px;border-bottom:1px solid var(--line);cursor:pointer;background:#fff}
+.list .item:hover{background:var(--plum-50)}
+.list .item:last-child{border-bottom:0}
+.lead-id{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--ink-2)}
+.empty{padding:36px 16px;text-align:center;color:var(--muted)}
+.kpi{border-left:4px solid var(--line-2)}
+.kpi.good{border-left-color:var(--good)} .kpi.warn{border-left-color:var(--warn)} .kpi.bad{border-left-color:var(--bad)}
+.kpi .v{font-size:26px;font-weight:700;margin:2px 0}
+.kpi.lg{border-left-width:6px}
+.kpi.lg .v{font-size:32px;line-height:1.1}
+.pulse-banner{font-size:14.5px;font-weight:600;line-height:1.6}
+.trend{font-weight:700}
+.trend.up{color:var(--good)} .trend.down{color:var(--bad)} .trend.flat{color:var(--muted)}
+.bar{height:22px;background:var(--plum-100);border-radius:5px;position:relative;overflow:hidden}
+.bar>i{position:absolute;left:0;top:0;bottom:0;background:var(--plum-2);border-radius:5px}
+.bar>b{position:absolute;left:8px;top:2px;font-size:12px;color:#fff;mix-blend-mode:normal}
+.spark{display:flex;align-items:flex-end;gap:3px;height:70px}
+.spark i{flex:1;background:var(--plum-2);border-radius:3px 3px 0 0;min-height:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button{border:1px solid var(--line-2);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font-weight:550;color:var(--ink-2)}
+.tabs button.on{background:var(--plum);border-color:var(--plum);color:#fff}
+.tabs button .n{margin-left:6px;font-size:11px;opacity:.8}
+.tabs button.alert:not(.on){border-color:var(--bad);color:var(--bad)}
+
+/* Modal & toast */
+.overlay{position:fixed;inset:0;background:rgba(31,26,29,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:4vh 12px;overflow:auto;-webkit-overflow-scrolling:touch}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:760px;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative}
+.modal.wide{max-width:1080px}
+.modal-h{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;border-radius:12px 12px 0 0;z-index:2}
+.modal-b{padding:16px 18px 20px}
+.x{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
+@media (max-width:760px){.overlay{padding:0}.modal{border-radius:0;min-height:100vh}.modal-h{border-radius:0}}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:var(--ink);color:#fff;padding:10px 16px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:92vw;pointer-events:auto}
+.toast.err{background:var(--bad)}
+.toast.ok{background:var(--good)}
+.alert{padding:10px 12px;border-radius:var(--r-sm);font-size:13px}
+.alert.err{background:var(--bad-50);color:var(--bad)}
+.alert.warn{background:var(--warn-50);color:var(--warn)}
+.alert.info{background:var(--info-50);color:var(--info)}
+.alert.ok{background:var(--good-50);color:var(--good)}
+.loading{position:fixed;top:0;left:0;right:0;height:3px;z-index:90;background:linear-gradient(90deg,transparent,var(--plum-2),transparent);background-size:50% 100%;animation:ld 1s linear infinite}
+@keyframes ld{from{background-position:-50% 0}to{background-position:150% 0}}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:4px 12px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+@media (max-width:760px){.kv{grid-template-columns:120px 1fr}}
+.timeline{border-left:2px solid var(--line);margin-left:6px;padding-left:14px}
+.timeline .ev{position:relative;padding:4px 0 10px}
+.timeline .ev::before{content:"";position:absolute;left:-20px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--plum-100);border:2px solid var(--plum-2)}
+.pick{border:1px solid var(--line);border-radius:var(--r);max-height:340px;overflow:auto;-webkit-overflow-scrolling:touch}
+.pick .opt{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
+.pick .opt:last-child{border-bottom:0}
+.pick .opt.sel{background:var(--plum-50)}
+.pick .opt .price{margin-left:auto;text-align:right;white-space:nowrap}
+.sum{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 0 0;margin-top:12px}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(160deg,var(--plum) 0%,#3d1233 100%)}
+.login{width:100%;max-width:380px}
+.login .brandbig{color:#fff;font-size:22px;font-weight:700;margin-bottom:4px}
+.login .sub{color:rgba(255,255,255,.75);margin-bottom:18px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.panel{border:1px solid var(--line);border-radius:var(--r);padding:12px;background:#fcfbfc}
+.panel+.panel{margin-top:10px}
+.sticky-actions{position:sticky;bottom:0;background:#fff;padding-top:10px;border-top:1px solid var(--line);margin-top:14px}
+details summary{cursor:pointer;font-weight:600;color:var(--ink-2)}
+pre.json{white-space:pre-wrap;word-break:break-word;background:var(--grey-50);padding:8px;border-radius:6px;font-size:11.5px;margin:4px 0 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast"></div>
+<div id="loading" class="loading hide"></div>
+
+<script>
+'use strict';
+/* =========================================================================
+ *  Gynoveda DCP — client (Index.html)
+ *  All data access goes through api(action, payload) → Code.gs api().
+ *  Every value rendered into HTML is escaped by the html`` template tag.
+ * ========================================================================= */
+
+const S = { token: null, boot: null, view: null, queueTab: null, queue: null, timer: null, modalLeadId: null, cache: {} };
+
+/* ---------- safe HTML templating ---------- */
+class Raw { constructor(s) { this.s = s; } toString() { return this.s; } }
+const raw = s => new Raw(String(s));
+function esc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function html(strings, ...vals) {
+  let out = '';
+  strings.forEach((s, i) => {
+    out += s;
+    if (i < vals.length) {
+      const v = vals[i];
+      if (v instanceof Raw) out += v.s;
+      else if (Array.isArray(v)) out += v.map(x => (x instanceof Raw ? x.s : esc(x))).join('');
+      else if (v === false || v === null || v === undefined) out += '';
+      else out += esc(v);
+    }
+  });
+  return new Raw(out);
+}
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+/* ---------- formatting ---------- */
+function inr(n) {
+  if (n === null || n === undefined || n === '') return '—';
+  const v = Math.round(Number(n) * 100) / 100;
+  const neg = v < 0, p = Math.abs(v).toFixed(2).split('.');
+  let i = p[0];
+  if (i.length > 3) i = i.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + i.slice(-3);
+  return (neg ? '-' : '') + '₹' + i + (p[1] === '00' ? '' : '.' + p[1]);
+}
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fdate(s) {
+  if (!s) return '';
+  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+  if (!m) return s;
+  return Number(m[3]) + ' ' + MON[Number(m[2]) - 1] + (m[1] !== String(new Date().getFullYear()) ? ' ' + m[1] : '') + (m[4] ? ', ' + m[4] + ':' + m[5] : '');
+}
+function todayStr() { return S.boot ? S.boot.today : new Date().toISOString().slice(0, 10); }
+function addDays(dateStr, n) { const d = new Date(dateStr + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+const STATUS_TONE = {
+  'Lead generated': 'plum', 'Called by lab': 'info', 'Not reachable': 'warn', 'Test booked': 'info', 'Lab visit scheduled': 'info',
+  'Home sample collection': 'info', 'Sample collected': 'info', 'Test done': 'good', 'Test report generated': 'good', 'Closed': '',
+  'Not interested': '', 'Cancelled': '', 'Follow-up: After period': 'warn', 'Follow-up: Will do later': 'warn', 'Disputed': 'bad'
+};
+function statusChip(s) { return html`<span class="chip ${STATUS_TONE[s] || ''}">${s}</span>`; }
+function slaChip(sla) {
+  if (!sla || !sla.label) return '';
+  const tone = sla.breached || sla.escalate ? 'bad' : sla.priority ? 'bad' : sla.warn || sla.due ? 'warn' : sla.paused ? '' : 'info';
+  return html`<span class="chip ${tone}"><span class="dot"></span>${sla.label}</span>`;
+}
+function personName(p) { return p === 'S' ? 'Spouse' : p === 'B' ? 'Both' : 'Patient'; }
+function genderLabel(g) { return g === 'M' ? 'Male' : g === 'F' ? 'Female' : g || ''; }
+
+/* ---------- server bridge ---------- */
+let inflight = 0;
+function busy(on) { inflight += on ? 1 : -1; $('#loading').classList.toggle('hide', inflight <= 0); }
+function api(action, payload, opts) {
+  opts = opts || {};
+  return new Promise((resolve, reject) => {
+    if (!window.google || !google.script || !google.script.run) { reject(new Error('Open this app from its Apps Script web-app URL.')); return; }
+    if (!opts.silent) busy(true);
+    google.script.run
+      .withSuccessHandler(raw => {
+        if (!opts.silent) busy(false);
+        let r;
+        try { r = JSON.parse(raw); } catch (e) { reject(new Error('Unexpected server response.')); return; }
+        if (r.ok) { resolve(r.data); return; }
+        const err = new Error(r.error || 'Request failed'); err.code = r.code;
+        if (r.code === 'SESSION_EXPIRED') { signOut(true, r.error); }
+        reject(err);
+      })
+      .withFailureHandler(e => { if (!opts.silent) busy(false); reject(new Error(e && e.message ? e.message : 'Network error — check your connection.')); })
+      .api(S.token, action, payload || {});
+  });
+}
+function toast(msg, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || '');
+  el.textContent = msg;
+  $('#toast').appendChild(el);
+  setTimeout(() => el.remove(), kind === 'err' ? 6500 : 3500);
+}
+function fail(e) { toast(e && e.message ? e.message : String(e), 'err'); }
+async function run(fn, okMsg) {
+  try { const r = await fn(); if (okMsg) toast(okMsg, 'ok'); return r; }
+  catch (e) { fail(e); throw e; }
+}
+
+/* ---------- storage ---------- */
+function store(k, v) { try { if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (e) { /* storage blocked */ } }
+function load(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+
+/* ---------- modal ---------- */
+function openModal(title, body, opts) {
+  opts = opts || {};
+  closeModal();
+  const root = $('#modal-root');
+  root.innerHTML = html`<div class="overlay" data-overlay="1"><div class="modal ${opts.wide ? 'wide' : ''}" role="dialog" aria-modal="true">
+    <div class="modal-h"><div class="grow">${opts.head || html`<h3>${title}</h3>`}</div><button class="x" data-act="close-modal" aria-label="Close">×</button></div>
+    <div class="modal-b" id="modal-body">${body}</div></div></div>`.s;
+  document.body.style.overflow = 'hidden';
+  return $('#modal-body');
+}
+function closeModal() { $('#modal-root').innerHTML = ''; document.body.style.overflow = ''; S.modalLeadId = null; }
+function confirmBox(msg, okLabel) {
+  return new Promise(res => {
+    const b = openModal('Please confirm', html`<p>${msg}</p><div class="actions"><button class="btn" id="cf-ok">${okLabel || 'Confirm'}</button><button class="btn btn-ghost" id="cf-no">Cancel</button></div>`);
+    $('#cf-ok', b).onclick = () => { closeModal(); res(true); };
+    $('#cf-no', b).onclick = () => { closeModal(); res(false); };
+  });
+}
+function formData(form) {
+  const o = {};
+  new FormData(form).forEach((v, k) => { if (o[k] !== undefined) { o[k] = [].concat(o[k], v); } else o[k] = typeof v === 'string' ? v.trim() : v; });
+  $$('input[type=checkbox]', form).forEach(c => { if (c.name && !c.dataset.multi) o[c.name] = c.checked; });
+  return o;
+}
+function downloadText(name, text, mime) {
+  const blob = new Blob([text], { type: mime || 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function b64ToBlob(b64, mime) {
+  const bin = atob(b64), len = bin.length, bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+function readFileB64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1] || '');
+    r.onerror = () => rej(new Error('Could not read the file.'));
+    r.readAsDataURL(file);
+  });
+}
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(() => toast('Copied', 'ok')).catch(() => fallbackCopy(text));
+  fallbackCopy(text);
+}
+function fallbackCopy(text) {
+  const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+  try { document.execCommand('copy'); toast('Copied', 'ok'); } catch (e) { toast('Select and copy manually', 'err'); }
+  t.remove();
+}
+
+/* ---------- delegated events ---------- */
+const ACT = {};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) {
+    if (e.target.dataset && e.target.dataset.overlay) closeModal();
+    return;
+  }
+  const fn = ACT[el.dataset.act];
+  if (fn) { if (el.tagName !== 'A' || el.dataset.prevent) e.preventDefault(); fn(el, e); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modal-root').firstChild) closeModal(); });
+ACT['close-modal'] = () => closeModal();
+ACT['nav'] = el => go(el.dataset.view);
+
+/* ---------- auth ---------- */
+function renderLogin(msg) {
+  stopRefresh();
+  $('#app').innerHTML = html`<div class="login-wrap"><div class="login">
+    <div class="brandbig">Gynoveda DCP</div><div class="sub">Diagnostic Center Partnerships</div>
+    <form class="card col" id="login-form" autocomplete="on">
+      ${msg ? html`<div class="alert info">${msg}</div>` : ''}
+      <label class="f"><span>Email</span><input type="email" name="email" required autocomplete="username"></label>
+      <label class="f"><span>Password</span><input type="password" name="password" required autocomplete="current-password"></label>
+      <button class="btn" type="submit">Sign in</button>
+      <button class="btn-link" type="button" data-act="forgot">Forgot password?</button>
+    </form>
+    <p class="small" style="color:rgba(255,255,255,.7);margin-top:12px">Access is issued by the DCP Admin. Patient data is protected under the DPDP Act, 2023 — use only for diagnostic coordination.</p>
+  </div></div>`.s;
+  $('#login-form').onsubmit = async e => {
+    e.preventDefault();
+    const f = formData(e.target);
+    try {
+      const r = await api('auth.login', f);
+      S.token = r.token; store('dcp_token', r.token);
+      if (r.mustChangePassword) renderChangePassword(r.name, true);
+      else start(r.boot);
+    } catch (err) { fail(err); }
+  };
+}
+ACT['forgot'] = async () => {
+  const email = ($('#login-form [name=email]') || {}).value;
+  if (!email) { toast('Enter your email first', 'err'); return; }
+  try { const r = await api('auth.forgot', { email }); renderLogin(r.message); } catch (e) { fail(e); }
+};
+function renderChangePassword(name, forced) {
+  const minLen = (S.boot && S.boot.cfg.PASSWORD_MIN_LENGTH) || 8;
+  const body = html`<form class="card col" id="pw-form">
+      <h3>${forced ? 'Set your password' : 'Change password'}</h3>
+      ${forced ? html`<p class="muted small">Welcome${name ? ', ' + name : ''}. Choose a new password to continue.</p>` : ''}
+      ${forced ? '' : html`<label class="f"><span>Current password</span><input type="password" name="currentPassword" required></label>`}
+      <label class="f"><span>New password</span><input type="password" name="newPassword" required minlength="${minLen}" autocomplete="new-password"></label>
+      <label class="f"><span>Repeat new password</span><input type="password" name="confirmPassword" required autocomplete="new-password"></label>
+      <p class="small muted">At least ${minLen} characters, letters and numbers only, with at least one of each.</p>
+      <div class="actions"><button class="btn" type="submit">Save password</button>${forced ? html`<button class="btn btn-ghost" type="button" data-act="logout">Cancel</button>` : ''}</div>
+    </form>`;
+  if (forced) $('#app').innerHTML = html`<div class="login-wrap"><div class="login"><div class="brandbig">Gynoveda DCP</div><div class="sub">First sign-in</div>${body}</div></div>`.s;
+  else openModal('Change password', body);
+  $('#pw-form').onsubmit = async e => {
+    e.preventDefault();
+    try {
+      const r = await api('auth.changePassword', formData(e.target));
+      S.token = r.token; store('dcp_token', r.token);
+      toast('Password updated', 'ok');
+      closeModal();
+      start(r.boot);
+    } catch (err) { fail(err); }
+  };
+}
+ACT['logout'] = () => signOut(false);
+ACT['change-pw'] = () => renderChangePassword(S.boot.user.name, false);
+function signOut(expired, msg) {
+  const t = S.token;
+  S.token = null; S.boot = null; store('dcp_token', null); stopRefresh(); closeModal();
+  if (t && !expired) api('auth.logout', {}, { silent: true }).catch(() => {});
+  renderLogin(expired ? (msg || 'Your session has expired. Please sign in again.') : 'Signed out.');
+}
+
+/* ---------- shell & routing ---------- */
+const NAV = {
+  'Clinic Manager': [['newlead', 'New lead'], ['queue', 'My leads'], ['reminders', 'Reminders'], ['search', 'Search']],
+  'Partner Coordinator': [['queue', 'Queues'], ['reminders', 'Reminders'], ['search', 'Search'], ['statements', 'Statements'], ['requestlab', 'Request lab']],
+  'Lab User': [['queue', 'Lab queue'], ['search', 'Search']],
+  'Admin': [['dashboard', 'Dashboard'], ['queue', 'Queues'], ['newlead', 'New lead'], ['search', 'Search'], ['reminders', 'Reminders'], ['settlement', 'Settlement'],
+    ['users', 'Users'], ['partners', 'Partners & labs'], ['masterdata', 'Master data'], ['duplicates', 'Duplicates'], ['disputes', 'Disputes'], ['audit', 'Audit'], ['config', 'Config']]
+};
+function start(boot) {
+  S.boot = boot;
+  const u = boot.user;
+  // The whole menu is built from the role string. If it isn't one the client knows,
+  // render the reason instead of an empty shell the user can't act on.
+  if (!NAV[u.role]) {
+    $('#app').innerHTML = html`<div class="login-wrap"><div class="login">
+      <div class="brandbig">Gynoveda DCP</div><div class="sub">Account not set up</div>
+      <div class="card col"><div class="alert err">Your account's role is "${u.role || '(blank)'}", which this app doesn't recognise, so there are no screens to show you.</div>
+      <p class="small muted">Ask the DCP Admin to open the <b>Users</b> tab and set <b>Role</b> for ${u.email} to exactly one of: ${Object.keys(NAV).join(', ')}.</p>
+      <button class="btn btn-ghost" data-act="logout">Sign out</button></div></div></div>`.s;
+    return;
+  }
+  $('#app').innerHTML = html`
+    <header class="topbar"><div class="brand">Gynoveda DCP<span>v${boot.cfg.APP_VERSION}</span></div>
+      <div class="who"><b>${u.name}</b><br><span>${u.role}</span><span class="org"> · ${u.orgName}</span></div>
+      <button class="btn btn-ghost btn-sm" data-act="change-pw" title="Change password">Password</button>
+      <button class="btn btn-ghost btn-sm" data-act="logout">Sign out</button></header>
+    <nav class="nav" id="nav">${(NAV[u.role] || []).map(n => html`<button data-act="nav" data-view="${n[0]}" id="nav-${n[0]}">${n[1]}<span class="count hide" id="cnt-${n[0]}"></span></button>`)}</nav>
+    <main id="main"></main>`.s;
+  const first = (NAV[u.role] || [['queue']])[0][0];
+  go(load('dcp_view_' + u.role) || first);
+  startRefresh();
+}
+function go(view) {
+  const allowed = (NAV[S.boot.user.role] || []).map(n => n[0]);
+  if (allowed.indexOf(view) < 0) view = allowed[0];
+  S.view = view;
+  store('dcp_view_' + S.boot.user.role, view);
+  $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+  const main = $('#main');
+  main.innerHTML = '';
+  const fn = VIEWS[view];
+  // Each render gets a generation number. If the user switches tabs while a view's
+  // server call is still in flight, the late response lands in a DOM that no longer
+  // holds its container. That throws, but the user has already moved on, so the
+  // error is stale — surface it only if this render is still the current one.
+  const gen = S.gen = (S.gen || 0) + 1;
+  if (fn) Promise.resolve(fn(main)).catch(e => { if (gen === S.gen) fail(e); });
+  window.scrollTo(0, 0);
+}
+function startRefresh() {
+  stopRefresh();
+  const sec = Math.max(30, (S.boot && S.boot.cfg.AUTO_REFRESH_SECONDS) || 60);
+  S.timer = setInterval(() => {
+    if (document.visibilityState !== 'visible' || $('#modal-root').firstChild) return;
+    if (S.view === 'queue') loadQueue(true);
+  }, sec * 1000);
+}
+function stopRefresh() { if (S.timer) clearInterval(S.timer); S.timer = null; }
+
+const VIEWS = {};
+
+window.addEventListener('load', async () => {
+  const t = load('dcp_token');
+  if (!t) { renderLogin(); return; }
+  S.token = t;
+  try { start(await api('boot', {})); } catch (e) { if (e.code === 'PASSWORD_CHANGE_REQUIRED') renderChangePassword('', true); else renderLogin(e.code === 'SESSION_EXPIRED' ? 'Please sign in again.' : e.message); }
+});
+</script>
+
+<script>
+/* ======================= QUEUES ======================= */
+const TABS = {
+  'Partner Coordinator': ['new', 'retry', 'followup', 'tobook', 'toschedule', 'scheduled', 'inprogress', 'awaitreport', 'overdue', 'waiting', 'all'],
+  'Admin': ['new', 'retry', 'followup', 'tobook', 'toschedule', 'scheduled', 'inprogress', 'awaitreport', 'overdue', 'escalation', 'disputed', 'waiting', 'all'],
+  'Lab User': ['scheduled', 'inprogress', 'awaitreport', 'all'],
+  'Clinic Manager': ['all', 'new', 'scheduled', 'inprogress', 'awaitreport', 'overdue']
+};
+const TAB_LABEL = {
+  new: 'New – uncalled', retry: 'Retries due', followup: 'Follow-ups due', tobook: 'To book', toschedule: 'To schedule',
+  scheduled: 'Scheduled', inprogress: 'Pending tests / scans', awaitreport: 'Awaiting report', overdue: 'Overdue SLA',
+  waiting: 'Waiting (later)', escalation: 'Escalations', disputed: 'Disputed', all: 'All'
+};
+const ALERT_TABS = ['overdue', 'escalation', 'disputed', 'retry', 'followup'];
+
+/** Distinct {id,name} options for the Region/Area queue & search filters (BRD §9.1). Admin sees every
+ *  region/area; other roles see only the ones their own clinics fall under. */
+function geoOptions(kind) {
+  const key = kind === 'region' ? 'regionId' : 'areaId';
+  const admin = S.boot.user.role === 'Admin';
+  const names = {}; (S.boot[kind + 's'] || []).forEach(x => names[x.id] = x.name);
+  const source = admin ? (S.boot[kind + 's'] || []).map(x => x.id) : S.boot.clinics.map(c => c[key]);
+  const seen = {}, ids = [];
+  source.forEach(id => { if (id && !seen[id]) { seen[id] = 1; ids.push(id); } });
+  return ids.map(id => ({ id: id, name: names[id] || id }));
+}
+const QUEUE_FILTER_IDS = ['q-region', 'q-area', 'q-partner', 'q-lab', 'q-urgency', 'q-from', 'q-to'];
+VIEWS.queue = async main => {
+  const role = S.boot.user.role;
+  const tabs = TABS[role];
+  S.queueTab = load('dcp_tab_' + role) || tabs[0];
+  if (tabs.indexOf(S.queueTab) < 0) S.queueTab = tabs[0];
+  const showGeo = role !== 'Lab User' && (S.boot.regions || []).length > 1;
+  const showPartner = role === 'Admin' && (S.boot.partners || []).length > 1;
+  const showLab = (role === 'Admin' || role === 'Partner Coordinator') && (S.boot.labs || []).length > 1;
+  main.innerHTML = html`
+    <div class="row between" style="margin-bottom:10px">
+      <h2>${role === 'Lab User' ? (S.boot.lab ? S.boot.lab.name : 'Lab queue') : role === 'Clinic Manager' ? 'My clinic\'s leads' : 'Work queues'}</h2>
+      <div class="row"><input type="search" id="q-filter" placeholder="Filter by name, phone, ID, clinic, test" style="width:280px">
+      ${role === 'Admin' || role === 'Partner Coordinator' ? html`<select id="q-clinic" style="width:180px"><option value="">All clinics</option>${S.boot.clinics.map(c => html`<option value="${c.id}">${c.name}</option>`)}</select>` : ''}
+      <button class="btn btn-ghost btn-sm" data-act="q-more">More filters</button>
+      <button class="btn btn-ghost" data-act="q-refresh">Refresh</button></div></div>
+    <div class="card section" id="q-more" style="display:none">
+      <div class="grid g4">
+        ${showGeo ? html`<label class="f"><span>Region</span><select id="q-region"><option value="">All regions</option>${geoOptions('region').map(r => html`<option value="${r.id}">${r.name}</option>`)}</select></label>` : ''}
+        ${showGeo ? html`<label class="f"><span>Area</span><select id="q-area"><option value="">All areas</option>${geoOptions('area').map(a => html`<option value="${a.id}">${a.name}</option>`)}</select></label>` : ''}
+        ${showPartner ? html`<label class="f"><span>Partner</span><select id="q-partner"><option value="">All partners</option>${S.boot.partners.map(p => html`<option value="${p.id}">${p.name}</option>`)}</select></label>` : ''}
+        ${showLab ? html`<label class="f"><span>Fulfilling lab</span><select id="q-lab"><option value="">All labs</option>${S.boot.labs.map(l => html`<option value="${l.id}">${l.name}</option>`)}</select></label>` : ''}
+        <label class="f"><span>Urgency</span><select id="q-urgency"><option value="">Any</option><option>Urgent</option><option>Normal</option></select></label>
+        <label class="f"><span>Created from</span><input type="date" id="q-from"></label>
+        <label class="f"><span>Created to</span><input type="date" id="q-to"></label>
+        <div class="row" style="align-self:end"><button class="btn-link small" data-act="q-clear" type="button">Clear these filters</button></div>
+      </div>
+    </div>
+    <div class="tabs" id="q-tabs"></div>
+    <div id="q-note"></div>
+    <div class="card" style="padding:0" id="q-list"><div class="empty">Loading…</div></div>`.s;
+  $('#q-filter').oninput = renderQueueList;
+  if ($('#q-clinic')) $('#q-clinic').onchange = renderQueueList;
+  QUEUE_FILTER_IDS.forEach(id => { if ($('#' + id)) $('#' + id).onchange = renderQueueList; });
+  await loadQueue();
+};
+ACT['q-refresh'] = () => loadQueue();
+ACT['q-more'] = () => { const p = $('#q-more'); if (p) p.style.display = p.style.display === 'none' ? '' : 'none'; };
+ACT['q-clear'] = () => { QUEUE_FILTER_IDS.forEach(id => { if ($('#' + id)) $('#' + id).value = ''; }); renderQueueList(); };
+ACT['q-tab'] = el => { S.queueTab = el.dataset.tab; store('dcp_tab_' + S.boot.user.role, S.queueTab); loadQueue(); };
+
+async function loadQueue(silent) {
+  try {
+    const r = await api('leads.queue', { tab: S.queueTab }, { silent: !!silent });
+    S.queue = r;
+    if (S.view !== 'queue') return;
+    const tabs = TABS[S.boot.user.role];
+    $('#q-tabs').innerHTML = tabs.map(t => {
+      const n = r.counts[t] || 0;
+      return html`<button data-act="q-tab" data-tab="${t}" class="${t === S.queueTab ? 'on' : ''} ${n && ALERT_TABS.indexOf(t) >= 0 ? 'alert' : ''}">${TAB_LABEL[t]}<span class="n">${n}</span></button>`.s;
+    }).join('');
+    const badge = $('#cnt-queue');
+    const urgent = (r.counts.new || 0) + (r.counts.overdue || 0);
+    if (badge) { badge.textContent = urgent; badge.classList.toggle('hide', !urgent); }
+    const rb = $('#cnt-reminders');
+    if (rb) { rb.textContent = r.reminders || 0; rb.classList.toggle('hide', !r.reminders); }
+    renderQueueList();
+  } catch (e) { if (!silent) fail(e); }
+}
+
+function leadRow(i) {
+  const role = S.boot.user.role;
+  const next = i.appt ? 'Appt ' + fdate(i.appt) + (i.slot ? ' · ' + i.slot : '') + (i.lab ? ' · ' + i.lab : '')
+    : i.fuDate ? 'Follow-up ' + fdate(i.fuDate) : i.retryAt ? 'Retry ' + fdate(i.retryAt) + (i.nrReason ? ' (' + i.nrReason + ')' : '') : '';
+  return html`<div class="item" data-act="open-lead" data-id="${i.id}">
+    <div class="grow">
+      <div class="row" style="gap:6px"><b>${i.name}</b>${i.spouse ? html`<span class="muted">& ${i.spouse}</span>` : ''}
+        ${i.urgency === 'Urgent' ? html`<span class="chip bad">Urgent</span>` : ''}${i.booking === 'Couple' ? html`<span class="chip">Couple</span>` : ''}
+        ${i.optOut ? html`<span class="chip">Opted out</span>` : ''}${i.paymentPending ? html`<span class="chip warn">Payment entry pending</span>` : ''}</div>
+      <div class="small muted"><span class="lead-id">${i.id}</span> · ${i.clinic}${i.phone && role !== 'Lab User' ? html` · <a href="tel:${i.phone}" data-act="noop">${i.phone}</a>` : ''}${i.phone && role === 'Lab User' ? ' · ' + i.phone : ''} · ${fdate(i.created)}</div>
+      <div class="small" style="margin-top:3px">${i.tests || html`<span class="muted">No tests</span>`}${i.scans ? html` <span class="chip info">Scans ${i.scans}</span>` : ''}${i.pending && i.status === 'Sample collected' ? html` <span class="chip warn">${i.pending} pending</span>` : ''}</div>
+      ${next ? html`<div class="small muted" style="margin-top:2px">${next}</div>` : ''}
+    </div>
+    <div class="col" style="align-items:flex-end;gap:5px;min-width:140px">${statusChip(i.status)}${slaChip(i.sla)}
+      ${i.price !== undefined ? html`<span class="small">${inr(i.price)}</span>` : ''}${role === 'Admin' && i.rev ? html`<span class="small muted">${i.rev} · ${inr(i.margin)}</span>` : ''}</div>
+  </div>`;
+}
+ACT['noop'] = () => {};
+function renderQueueList() {
+  if (!S.queue || !$('#q-list')) return;
+  const q = ($('#q-filter') || {}).value ? $('#q-filter').value.toLowerCase() : '';
+  const val = id => ($('#' + id) || {}).value || '';
+  const clinic = val('q-clinic'), region = val('q-region'), area = val('q-area'), partner = val('q-partner'),
+    lab = val('q-lab'), urgency = val('q-urgency'), from = val('q-from'), to = val('q-to');
+  const clinicGeo = {}; S.boot.clinics.forEach(c => { clinicGeo[c.id] = c; });
+  const items = S.queue.items.filter(i => {
+    if (clinic && i.clinicId !== clinic) return false;
+    if (partner && i.partnerId !== partner) return false;
+    if (lab && i.labId !== lab) return false;
+    if (urgency && (i.urgency || 'Normal') !== urgency) return false;
+    const created = i.created ? i.created.slice(0, 10) : '';
+    if (from && (!created || created < from)) return false;
+    if (to && (!created || created > to)) return false;
+    if (region || area) {
+      const g = clinicGeo[i.clinicId];
+      if (region && (!g || g.regionId !== region)) return false;
+      if (area && (!g || g.areaId !== area)) return false;
+    }
+    return !q || [i.id, i.name, i.phone, i.clinic, i.tests, i.spouse, i.legacy].some(v => v && String(v).toLowerCase().indexOf(q) >= 0);
+  });
+  $('#q-note').innerHTML = S.queue.truncated ? html`<div class="alert info" style="margin-bottom:10px">Showing the ${S.queue.items.length} highest-priority of ${S.queue.total} leads in this tab. Use Search to find a specific lead.</div>`.s : '';
+  $('#q-list').innerHTML = items.length ? html`<div class="list">${items.map(leadRow)}</div>`.s
+    : html`<div class="empty">${S.queueTab === 'new' ? 'No new leads waiting for a call.' : 'Nothing here right now.'}</div>`.s;
+}
+ACT['open-lead'] = (el, e) => { if (e.target.closest('a')) return; openLead(el.dataset.id); };
+
+/* ======================= SEARCH ======================= */
+VIEWS.search = main => {
+  const admin = S.boot.user.role === 'Admin';
+  const showGeo = (S.boot.regions || []).length > 1;
+  const showPartner = admin && (S.boot.partners || []).length > 1;
+  const showLab = (S.boot.labs || []).length > 1 && (admin || S.boot.user.role === 'Partner Coordinator');
+  main.innerHTML = html`<h2 style="margin-bottom:10px">Search leads</h2>
+    <form class="card grid g4" id="s-form">
+      <label class="f"><span>Name, phone or Lead ID</span><input type="search" name="q" placeholder="e.g. 98765 or GYN-2610"></label>
+      <label class="f"><span>Status</span><select name="status"><option value="">Any</option>${Object.values(S.boot.consts.ST).map(s => html`<option>${s}</option>`)}</select></label>
+      <label class="f"><span>Urgency</span><select name="urgency"><option value="">Any</option><option>Urgent</option><option>Normal</option></select></label>
+      <label class="f"><span>Created from</span><input type="date" name="from"></label>
+      <label class="f"><span>Created to</span><input type="date" name="to"></label>
+      ${S.boot.clinics.length > 1 ? html`<label class="f"><span>Clinic</span><select name="clinicId"><option value="">All</option>${S.boot.clinics.map(c => html`<option value="${c.id}">${c.name}</option>`)}</select></label>` : ''}
+      ${showGeo ? html`<label class="f"><span>Region</span><select name="regionId"><option value="">All</option>${geoOptions('region').map(r => html`<option value="${r.id}">${r.name}</option>`)}</select></label>` : ''}
+      ${showGeo ? html`<label class="f"><span>Area</span><select name="areaId"><option value="">All</option>${geoOptions('area').map(a => html`<option value="${a.id}">${a.name}</option>`)}</select></label>` : ''}
+      ${showPartner ? html`<label class="f"><span>Partner</span><select name="partnerId"><option value="">All</option>${S.boot.partners.map(p => html`<option value="${p.id}">${p.name}</option>`)}</select></label>` : ''}
+      ${showLab ? html`<label class="f"><span>Fulfilling lab</span><select name="labId"><option value="">All</option>${S.boot.labs.map(l => html`<option value="${l.id}">${l.name}</option>`)}</select></label>` : ''}
+      <div class="row" style="align-self:end"><button class="btn" type="submit">Search</button>${admin ? html`<button class="btn btn-ghost" type="button" data-act="s-export">Export CSV</button>` : ''}</div>
+    </form><div id="s-res" class="section"></div>`.s;
+  $('#s-form').onsubmit = async e => {
+    e.preventDefault();
+    try {
+      const r = await api('leads.search', formData(e.target));
+      $('#s-res').innerHTML = html`<p class="muted small">${r.total} result(s)${r.total > r.items.length ? ' — showing first ' + r.items.length : ''}</p>
+        <div class="card" style="padding:0">${r.items.length ? html`<div class="list">${r.items.map(leadRow)}</div>` : html`<div class="empty">No leads match.</div>`}</div>`.s;
+    } catch (err) { fail(err); }
+  };
+};
+ACT['s-export'] = async () => {
+  const f = formData($('#s-form'));
+  try { const r = await api('export.table', Object.assign({ table: 'Leads' }, f)); downloadText(r.fileName, r.csv); } catch (e) { fail(e); }
+};
+
+/* ======================= REMINDERS (MANUAL WhatsApp) ======================= */
+const MSG_HELP = { M4: 'Evening-before reminder', M7: 'Follow-up date reached', M9: 'Satisfaction survey (reply 1–5)', 'M-REM': 'Pending test reminder', 'M9-CALL': 'Survey unanswered 48h+ — care-team call fallback' };
+VIEWS.reminders = async main => {
+  main.innerHTML = html`<div class="row between"><h2>Patient reminders due</h2><button class="btn btn-ghost" data-act="nav" data-view="reminders">Refresh</button></div>
+    <p class="muted small">Messaging mode: <b>${S.boot.cfg.MSG_MODE}</b>. ${S.boot.cfg.MSG_MODE === 'MANUAL' ? 'Click "Send on WhatsApp" — WhatsApp opens with the message ready; press send there. Each click is logged.' : 'API mode: reminders are sent automatically; this list shows anything still pending.'}</p>
+    <div id="rem-list" class="card" style="padding:0"><div class="empty">Loading…</div></div>`.s;
+  const r = await api('reminders', {});
+  $('#rem-list').innerHTML = r.items.length ? html`<div class="list">${r.items.map(i => html`<div class="item" style="cursor:default">
+      <div class="grow"><div class="row"><b>${i.name}</b><span class="chip ${i.code === 'M9-CALL' ? 'bad' : 'plum'}">${i.code === 'M9-CALL' ? 'Call' : i.code}</span><span class="muted small">${MSG_HELP[i.code] || ''}</span></div>
+      <div class="small muted"><span class="lead-id">${i.leadId}</span> · ${i.clinic} · ${i.label}</div>
+      ${i.text ? html`<details class="small" style="margin-top:4px"><summary>Preview message</summary><p>${i.text}</p></details>` : ''}</div>
+      <div class="col" style="align-items:flex-end">${i.link ? html`<a class="btn btn-wa btn-sm" href="${i.link}" target="_blank" rel="noopener" data-act="wa-log" data-lead="${i.leadId}" data-code="${i.code}">Send on WhatsApp</a>`
+        : i.code === 'M9-CALL' ? html`<a class="btn btn-sm" href="tel:${i.phone || ''}" data-act="noop">Call patient</a>` : html`<span class="chip">Opted out</span>`}
+      <button class="btn-link small" data-act="open-lead" data-id="${i.leadId}">Open lead</button></div></div>`)}</div>`.s
+    : html`<div class="empty">No reminders due. 🎉</div>`.s;
+};
+ACT['wa-log'] = el => {
+  api('msg.log', { leadId: el.dataset.lead, code: el.dataset.code }, { silent: true }).then(() => {
+    el.textContent = 'Opened ✓'; el.classList.add('btn-ghost');
+  }).catch(fail);
+};
+
+/* ======================= LEAD DETAIL ======================= */
+async function openLead(id, keepForm) {
+  try {
+    const d = await api('lead.get', { leadId: id });
+    S.modalLeadId = id;
+    S.lead = d;
+    renderLead(d);
+  } catch (e) { fail(e); }
+}
+async function refreshLead(msg) {
+  const id = S.modalLeadId;
+  if (S.view === 'queue') loadQueue(true);
+  if (id) await openLead(id);
+  if (msg) showMessagePrompt(msg);
+}
+function showMessagePrompt(m) {
+  if (!m) return;
+  const box = $('#lead-msg');
+  if (!box) return;
+  box.innerHTML = m.blocked ? html`<div class="alert warn">${m.code}: ${m.blocked}</div>`.s
+    : html`<div class="alert ok row between"><span><b>Notify the patient (${m.code} · ${m.name})</b><br><span class="small">${m.text.slice(0, 160)}${m.text.length > 160 ? '…' : ''}</span></span>
+      <a class="btn btn-wa" href="${m.link}" target="_blank" rel="noopener" data-act="wa-log" data-lead="${S.modalLeadId}" data-code="${m.code}">Send on WhatsApp</a></div>`.s;
+}
+
+const TRANS_LABEL = {
+  'Called by lab': 'Log call: spoke to patient', 'Not reachable': 'Not reachable', 'Test booked': 'Confirm test booked',
+  'Lab visit scheduled': 'Schedule lab visit', 'Home sample collection': 'Schedule home collection', 'Sample collected': 'Sample collected',
+  'Test done': 'Mark test done', 'Test report generated': 'Mark report generated', 'Not interested': 'Not interested', 'Cancelled': 'Cancel lead',
+  'Follow-up: After period': 'Follow-up: after period', 'Follow-up: Will do later': 'Follow-up: will do later', 'Disputed': 'Mark disputed', 'Closed': 'Close lead'
+};
+
+function renderLead(d) {
+  const L = d.lead, role = S.boot.user.role, admin = role === 'Admin';
+  const work = d.lines.filter(l => l.Active && !l.isHeader);
+  const head = html`<div class="row" style="gap:8px"><h3>${L.PatientName}</h3><span class="lead-id">${L.LeadID}</span>${statusChip(L.Status)}${slaChip(d.sla)}
+    ${L.Urgency === 'Urgent' ? html`<span class="chip bad">Urgent</span>` : ''}${L.OptOut === true ? html`<span class="chip">Opted out</span>` : ''}</div>`;
+  const tbtns = d.transitions.filter(t => t.to !== 'Sample collected').map(t => html`<button class="btn btn-sm ${['Cancelled', 'Not interested', 'Disputed'].indexOf(t.to) >= 0 ? 'btn-ghost' : ''}"
+      data-act="t-open" data-to="${t.to}" ${t.allowed ? '' : raw('disabled')} title="${t.reason || ''}">${TRANS_LABEL[t.to] || t.to}</button>`);
+  const extra = [];
+  if (d.canProgress) extra.push(html`<button class="btn btn-sm" data-act="f-open" data-form="progress">Log progress / scans</button>`);
+  if (d.canReschedule) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="reschedule">Reschedule</button>`);
+  if (d.canUploadReport) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="upload">Upload report PDF</button>`);
+  if (d.canUploadPrescription) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="uploadRx">${d.prescription ? 'Replace prescription photo' : 'Upload prescription photo'}</button>`);
+  if (d.canRecordPayment) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="payment">${L.PaymentMode ? 'Edit payment' : 'Record payment'}</button>`);
+  if (d.canEditTests) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="tests">Edit tests</button>`);
+  if (d.canEditLead) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="edit">Edit details</button>`);
+  if (d.canFlagDispute) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="dispute">Flag dispute</button>`);
+  if (admin && ['Lead generated', 'Called by lab', 'Not reachable', 'Test booked', 'Follow-up: After period', 'Follow-up: Will do later'].indexOf(L.Status) >= 0) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="reroute">Re-route</button>`);
+  if (role !== 'Lab User' && ['Test report generated', 'Closed'].indexOf(L.Status) >= 0) extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="rating">Record M9 rating</button>`);
+  if (role !== 'Lab User') extra.push(html`<button class="btn btn-sm btn-ghost" data-act="optout">${L.OptOut === true ? 'Remove opt-out' : 'Mark opted out'}</button>`);
+  extra.push(html`<button class="btn btn-sm btn-ghost" data-act="f-open" data-form="note">Add note</button>`);
+
+  const alerts = [];
+  if (d.pending.length && ['Sample collected', 'Lab visit scheduled', 'Home sample collection'].indexOf(L.Status) >= 0) alerts.push(html`<div class="alert warn">Pending: ${d.pending.join(', ')}</div>`);
+  if (L.Status === 'Test done' && d.missingReports.length) alerts.push(html`<div class="alert info">Upload a report PDF for: ${d.missingReports.map(personName).join(' and ')} to mark the report generated.</div>`);
+  if (L.Status === 'Test done' && !L.PaymentMode && role !== 'Lab User' && L.PaymentAmount !== undefined) alerts.push(html`<div class="alert warn">Patient payment not recorded yet.</div>`);
+
+  const priced = d.lines.filter(l => l.Active && l.ItemType !== 'PackageComponent');
+  const body = html`
+    ${alerts}
+    <div id="lead-msg"></div>
+    <div class="panel"><div class="actions">${tbtns}${extra}</div><div id="lead-form"></div></div>
+
+    <div class="grid g2 section">
+      <div><h4>Patient</h4><dl class="kv">
+        <dt>Name</dt><dd>${L.PatientName} · ${genderLabel(L.Gender)}, ${L.Age}</dd>
+        <dt>Phone</dt><dd>${role === 'Lab User' ? L.Phone : html`<a href="tel:${L.Phone}">${L.Phone}</a>`} · Pincode ${L.Pincode}</dd>
+        <dt>Booking</dt><dd>${L.BookingType}${L.BookingType === 'Couple' ? html` · Spouse: ${L.SpouseName} (${genderLabel(L.SpouseGender)}, ${L.SpouseAge})` : ''}</dd>
+        <dt>Doctor</dt><dd>${L.ReferringDoctor}</dd>
+        <dt>Visit</dt><dd>${L.VisitNumber ? 'V' + L.VisitNumber : '—'}</dd>
+        <dt>Clinic</dt><dd>${d.clinic.Name} · ${d.clinic.ClinicPhone || ''}</dd>
+        <dt>Partner</dt><dd>${d.partner.name} · ${d.partner.callingNumber}</dd>
+        <dt>Preferred mode</dt><dd>${L.PreferredMode || '—'}</dd>
+        <dt>Consent</dt><dd>${L.ConsentTicked === true ? '✓ ' : ''}${L.ConsentBy} · ${fdate(L.ConsentAt)}</dd>
+        ${L.NotesForLab ? html`<dt>Notes for lab</dt><dd>${L.NotesForLab}</dd>` : ''}
+        ${L.LegacyCRMLeadID ? html`<dt>Legacy CRM</dt><dd>${L.LegacyCRMLeadID}</dd>` : ''}
+        ${d.prescription ? html`<dt>Prescription</dt><dd><span class="mono">${d.prescription.fileName}</span> · ${fdate(d.prescription.uploadedAt)} <button type="button" class="btn-link small" data-act="rx-view">View</button></dd>` : ''}
+      </dl></div>
+      <div><h4>Booking</h4><dl class="kv">
+        <dt>Created</dt><dd>${fdate(L.CreatedAt)}</dd>
+        ${L.FollowUpDate ? html`<dt>Follow-up</dt><dd>${fdate(L.FollowUpDate)} · ${L.FollowUpReason || L.FollowUpCategory}</dd>` : ''}
+        ${L.Status === 'Not reachable' ? html`<dt>Retry</dt><dd>${fdate(L.RetryAt)} · ${L.NotReachableReason}</dd>` : ''}
+        ${d.lab ? html`<dt>Lab</dt><dd><b>${d.lab.LabName}</b><br><span class="small">${d.lab.Address} · ${d.lab.LabPhone}</span>${d.lab.MapsLink ? html`<br><a class="small" href="${d.lab.MapsLink}" target="_blank" rel="noopener">Google Maps</a>` : ''}</dd>` : ''}
+        ${L.ApptDate ? html`<dt>Appointment</dt><dd>${fdate(L.ApptDate)} · ${L.ApptSlot} · ${L.BookingMode}</dd>` : ''}
+        ${L.CollectionAddress ? html`<dt>Collection at</dt><dd>${L.CollectionAddress}</dd>` : ''}
+        ${L.NextScanDate ? html`<dt>Next scan</dt><dd>${fdate(L.NextScanDate)}</dd>` : ''}
+        ${L.SampleCollectedAt ? html`<dt>Sample collected</dt><dd>${fdate(L.SampleCollectedAt)}</dd>` : ''}
+        ${L.TestDoneAt ? html`<dt>Test done</dt><dd>${fdate(L.TestDoneAt)}</dd>` : ''}
+        ${L.ReportGeneratedAt ? html`<dt>Report</dt><dd>${fdate(L.ReportGeneratedAt)}</dd>` : ''}
+        ${L.CancelReason ? html`<dt>Reason</dt><dd>${L.CancelReason}</dd>` : ''}
+        ${L.PaymentMode ? html`<dt>Payment</dt><dd>${inr(L.PaymentAmount)} · ${L.PaymentMode} · ${fdate(L.PaymentDate)}${L.PaymentRef ? ' · ' + L.PaymentRef : ''}</dd>` : ''}
+      </dl></div>
+    </div>
+
+    <div class="section"><h4>Tests</h4><div class="tblwrap" style="max-height:none"><table class="tbl">
+      <tr><th>Item</th><th>For</th><th>Progress</th>${role !== 'Lab User' ? html`<th class="num">MRP</th>` : ''}<th class="num">Patient price</th>${admin ? html`<th class="num">Margin</th><th></th>` : ''}</tr>
+      ${d.lines.filter(l => l.Active).map(l => html`<tr>
+        <td>${l.ItemType === 'PackageComponent' ? html`<span class="muted">↳ </span>${l.ItemName.split(' › ').pop()}` : html`<b>${l.ItemName}</b>`}${l.ItemType === 'Package' ? html` <span class="chip plum">Package</span>` : ''}</td>
+        <td>${personName(l.PersonTag)}</td>
+        <td>${l.isHeader ? (l.IsDone ? '✓ all components' : '') : l.ScansRequired > 1 ? html`<span class="chip ${l.IsDone ? 'good' : 'info'}">Scan ${l.ScansDone}/${l.ScansRequired}</span>` : l.IsDone ? html`<span class="chip good">Done</span>` : html`<span class="muted small">Pending</span>`}</td>
+        ${role !== 'Lab User' ? html`<td class="num">${l.ItemType === 'PackageComponent' ? '' : inr(l.FrozenMRP)}</td>` : ''}
+        <td class="num">${l.ItemType === 'PackageComponent' ? '' : inr(l.FrozenPatientPrice)}</td>
+        ${admin ? html`<td class="num">${l.ItemType === 'PackageComponent' ? '' : inr(l.FrozenMarginRs)}</td><td>${l.ItemType !== 'PackageComponent' ? html`<button class="btn-link small" data-act="f-open" data-form="override" data-line="${l.LeadTestID}">Override</button>` : ''}</td>` : ''}
+      </tr>`)}
+      <tr><td colspan="${role === 'Lab User' ? 3 : 4}"><b>Total</b>${L.PatientDiscountRs !== undefined && Number(L.PatientDiscountRs) > 0 ? html` <span class="muted small">(patient saves ${inr(L.PatientDiscountRs)})</span>` : ''}</td>
+        <td class="num"><b>${inr(L.ExpectedPatientPrice)}</b></td>${admin ? html`<td class="num"><b>${inr(L.ExpectedMarginRs)}</b></td><td><span class="chip">${L.RevenueState}</span></td>` : ''}</tr>
+    </table></div></div>
+
+    <div class="section"><h4>Reports</h4>${d.reports.length ? html`<div class="col">${d.reports.map(r => html`<div class="row" style="${r.Active === true || r.Active === 'TRUE' ? '' : 'opacity:.55'}">
+        <span class="chip ${r.Active === true ? 'good' : ''}">${personName(r.PersonTag)}</span><span class="mono">${r.FileName}</span><span class="small muted">${r.FileSizeMB} MB · ${fdate(r.UploadedAt)}${r.ReplacedBy ? ' · replaced by ' + r.ReplacedBy : ''}</span>
+        ${r.Active === true || admin ? html`<button class="btn btn-sm btn-ghost" data-act="report-view" data-id="${r.ReportID}">View</button>` : ''}</div>`)}</div>` : html`<p class="muted small">No reports uploaded yet.</p>`}</div>
+
+    ${d.messages.length ? html`<div class="section"><h4>Patient messages (${S.boot.cfg.MSG_MODE === 'MANUAL' ? 'click-to-WhatsApp' : 'API'})</h4><div class="col">${d.messages.map(m => html`<div class="row between panel">
+        <span class="grow"><b>${m.code}</b> · ${m.name}${m.lastSent ? html` <span class="chip good">sent ${fdate(m.lastSent)}</span>` : ''}<br><span class="small muted">${m.blocked || m.text}</span></span>
+        ${m.blocked ? '' : html`<a class="btn btn-wa btn-sm" href="${m.link}" target="_blank" rel="noopener" data-act="wa-log" data-lead="${L.LeadID}" data-code="${m.code}">Send on WhatsApp</a>`}</div>`)}</div></div>` : ''}
+
+    ${admin && d.duplicates && d.duplicates.length ? html`<div class="section"><h4>Duplicate reviews</h4>${d.duplicates.map(x => html`<div class="small">${x.ReviewID}: ${x.PrimaryLeadID} ⇄ ${x.DuplicateLeadID} · ${x.OverlappingTests} · <b>${x.ResolutionStatus}</b></div>`)}</div>` : ''}
+    ${admin && d.statementLines && d.statementLines.length ? html`<div class="section"><h4>Statement lines</h4>${d.statementLines.map(x => html`<div class="small">${x.StatementID} · ${x.LineStatus} · margin ${inr(x.ContractualMarginRs)}${x.FlagNote ? ' · ' + x.FlagNote : ''}</div>`)}</div>` : ''}
+
+    <div class="section"><h4>Activity</h4>${d.activity.length ? html`<div class="timeline">${d.activity.map(a => html`<div class="ev"><div class="small"><b>${a.action.replace(/_/g, ' ').toLowerCase()}</b> ${a.ref && a.action === 'STATUS_CHANGE' ? '· ' + a.ref : ''}</div>
+      <div class="small muted">${a.by} (${a.role}) · ${a.at}</div>${a.note ? html`<div class="small">${a.note}</div>` : ''}
+      ${admin && (a.before || a.after) ? html`<details class="small"><summary>Before / after</summary><pre class="json">${a.before}\n→ ${a.after}</pre></details>` : ''}</div>`)}</div>` : html`<p class="muted small">No activity yet.</p>`}</div>`;
+  openModal('', body, { wide: true, head: head });
+  S.modalLeadId = L.LeadID; // openModal() → closeModal() clears it; restore for refreshLead / message prompts
+}
+
+/* ---------- action forms ---------- */
+function reasonSelect(list, name) { return html`<select name="${name || 'reason'}" required><option value="">Select…</option>${list.map(r => html`<option>${r}</option>`)}</select>`; }
+function labSelect(opts, current) {
+  return html`<select name="labId" required><option value="">Select fulfilling lab…</option>${opts.map(o => html`<option value="${o.labId}" ${o.ok ? '' : raw('disabled')} ${o.labId === current ? raw('selected') : ''}>
+    ${o.ok ? '' : '✕ '}${o.name}${o.area ? ' — ' + o.area : ''} · ${o.pincode}${o.serves ? ' · serves clinic' : ''}${o.ok ? '' : ' (' + o.why + ')'}</option>`)}</select>`;
+}
+const R = () => S.boot.consts.REASONS;
+function transitionFields(d, to) {
+  const L = d.lead, role = S.boot.user.role;
+  switch (to) {
+    case 'Called by lab': return html`<label class="f"><span class="req">Call summary</span><textarea name="note" required placeholder="What did the patient say?"></textarea></label>`;
+    case 'Not reachable': return html`<div class="grid g2"><label class="f"><span class="req">Reason</span>${reasonSelect(R().NOT_REACHABLE)}</label>
+      <label class="f"><span class="req">Retry at</span><input type="datetime-local" name="retryAt" required value="${addDays(todayStr(), 1)}T11:00"></label></div>`;
+    case 'Test booked': return html`<p class="small">Patient confirmed: <b>${d.lines.filter(l => l.Active && l.ItemType !== 'PackageComponent').map(l => l.ItemName).join(', ')}</b> · payable ${inr(L.ExpectedPatientPrice)}. Use "Edit tests" first if the list changed.</p>
+      <label class="f"><span>Note (optional)</span><input type="text" name="note"></label>`;
+    case 'Lab visit scheduled':
+    case 'Home sample collection': {
+      const home = to === 'Home sample collection';
+      const opts = d.labs ? (home ? d.labs.home : d.labs.visit) : [];
+      return html`<label class="f"><span class="req">Fulfilling lab</span>${labSelect(opts, L.AssignedLabID)}</label>
+        <p class="small muted">Labs that serve ${d.clinic.Name} and are nearest to pincode ${L.Pincode} are listed first. ✕ = can't perform every test${home ? ' or no home collection here' : ''}.</p>
+        <div class="grid g2"><label class="f"><span class="req">Date</span><input type="date" name="apptDate" required min="${todayStr()}" value="${L.ApptDate || addDays(todayStr(), 1)}"></label>
+        <label class="f"><span class="req">Time / slot</span><input type="text" name="apptSlot" required placeholder="10:30 or 10:00–11:00" value="${L.ApptSlot || ''}"></label></div>
+        ${home ? html`<label class="f"><span class="req">Collection address</span><textarea name="collectionAddress" required>${L.CollectionAddress || ''}</textarea></label>` : ''}`;
+    }
+    case 'Test done':
+      if (L.Status === 'Disputed') return html`<label class="f"><span class="req">Resolution note</span><textarea name="note" required></textarea></label>`;
+      return paymentFields(L, role === 'Lab User');
+    case 'Test report generated': return html`<p class="small">All persons have an active report PDF. The patient gets M8 and the clinic is emailed.</p>`;
+    case 'Not interested':
+    case 'Cancelled': return html`<div class="grid g2"><label class="f"><span class="req">Reason</span>${reasonSelect(R().CANCEL)}</label>
+      <label class="f"><span>If "Other" — describe</span><input type="text" name="reasonText"></label></div>
+      ${role === 'Admin' ? html`<label class="f"><span>If "Duplicate" — primary Lead ID</span><input type="text" name="primaryLeadId" placeholder="GYN-…"></label>` : ''}
+      <label class="f"><span>Note</span><input type="text" name="note"></label>`;
+    case 'Follow-up: After period':
+    case 'Follow-up: Will do later': return html`<div class="grid g2"><label class="f"><span class="req">Follow-up date</span><input type="date" name="followUpDate" required min="${addDays(todayStr(), 1)}"></label>
+      <label class="f"><span class="req">Reason</span><select name="reason" required><option value="">Select…</option>${R().FOLLOWUP.map(r => html`<option ${to === 'Follow-up: After period' && r === 'Waiting for next cycle' ? raw('selected') : ''}>${r}</option>`)}</select></label></div>
+      <label class="f"><span>If "Other" — describe</span><input type="text" name="reasonText"></label><p class="small muted">The SLA clock pauses until the follow-up date; the lead returns to the top of the queue at 9 AM that day (M7).</p>`;
+    case 'Disputed': return html`<label class="f"><span class="req">Dispute note</span><textarea name="note" required></textarea></label><p class="small muted">Revenue is frozen and the lead is held off the payable statement until resolved.</p>`;
+    case 'Closed': return html`<p class="small">Report uploaded and commission collected. Closing archives the lead.</p><label class="f"><span>Note</span><input type="text" name="note"></label>`;
+  }
+  return '';
+}
+function paymentFields(L, optional) {
+  return html`<p class="small">${optional ? 'Payment is entered by the Partner Coordinator — leave blank if you don\'t have it.' : 'Record what the patient paid.'}</p>
+    <div class="grid g4"><label class="f"><span class="${optional ? '' : 'req'}">Amount (₹)</span><input type="number" name="paymentAmount" step="0.01" min="0" ${optional ? '' : raw('required')} value="${optional ? '' : (L.PaymentAmount || L.ExpectedPatientPrice || '')}"></label>
+    <label class="f"><span class="${optional ? '' : 'req'}">Mode</span><select name="paymentMode" ${optional ? '' : raw('required')}><option value="">Select…</option>${R().PAYMENT_MODES.map(m => html`<option ${L.PaymentMode === m ? raw('selected') : ''}>${m}</option>`)}</select></label>
+    <label class="f"><span class="${optional ? '' : 'req'}">Date</span><input type="date" name="paymentDate" max="${todayStr()}" min="${String(L.CreatedAt || '').slice(0, 10)}" value="${L.PaymentDate || (optional ? '' : todayStr())}"></label>
+    <label class="f"><span>Reference</span><input type="text" name="paymentRef" value="${L.PaymentRef || ''}"></label></div>`;
+}
+
+ACT['t-open'] = el => {
+  const to = el.dataset.to, d = S.lead;
+  $('#lead-form').innerHTML = html`<form class="col" id="t-form" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+    <h3>${TRANS_LABEL[to] || to}</h3>${transitionFields(d, to)}
+    <div class="actions"><button class="btn" type="submit">Save</button><button class="btn btn-ghost" type="button" data-act="f-close">Cancel</button></div></form>`.s;
+  $('#t-form').onsubmit = async e => {
+    e.preventDefault();
+    const p = Object.assign(formData(e.target), { leadId: d.lead.LeadID, to: to, expectedStatus: d.lead.Status });
+    if (p.retryAt) p.retryAt = p.retryAt.replace('T', ' ');
+    try { const r = await api('lead.transition', p); toast('Updated: ' + r.status, 'ok'); await refreshLead(r.message); } catch (err) { fail(err); }
+  };
+};
+ACT['f-close'] = () => { $('#lead-form').innerHTML = ''; };
+
+ACT['f-open'] = el => {
+  const kind = el.dataset.form, d = S.lead, L = d.lead, role = S.boot.user.role;
+  let inner = '';
+  if (kind === 'progress') {
+    const work = d.lines.filter(l => l.Active && !l.isHeader);
+    inner = html`<h3>Log progress</h3><p class="small muted">Tick what was done today. Multi-visit scans are logged one at a time (1/3 → 2/3 → 3/3).</p>
+      <div class="pick">${work.map(l => html`<label class="opt check">
+        ${l.IsDone ? (role !== 'Lab User' ? html`<input type="checkbox" name="undo" data-multi="1" value="${l.LeadTestID}">` : html`<input type="checkbox" disabled checked>`) : html`<input type="checkbox" name="line" data-multi="1" value="${l.LeadTestID}">`}
+        <span class="grow">${l.ItemName} <span class="muted small">· ${personName(l.PersonTag)}</span></span>
+        <span class="price">${l.IsDone ? html`<span class="chip good">Done${role !== 'Lab User' ? ' — tick to undo' : ''}</span>` : l.ScansRequired > 1 ? html`<span class="chip info">Log scan ${Number(l.ScansDone) + 1} of ${l.ScansRequired}</span>` : html`<span class="small muted">Mark done</span>`}</span></label>`)}</div>
+      ${work.some(l => !l.IsDone && l.ScansRequired > 1 && Number(l.ScansDone) + 1 < l.ScansRequired) ? html`<label class="f" style="max-width:260px"><span>Next scan date (for scans not yet complete)</span><input type="date" name="nextScanDate" min="${todayStr()}"></label>` : ''}`;
+  } else if (kind === 'reschedule') {
+    const opts = d.labs ? (L.Status === 'Home sample collection' ? d.labs.home : d.labs.visit) : [];
+    inner = html`<h3>Reschedule</h3><label class="f"><span>Lab</span>${labSelect(opts, L.AssignedLabID)}</label>
+      <div class="grid g2"><label class="f"><span class="req">Date</span><input type="date" name="apptDate" required min="${todayStr()}" value="${L.ApptDate}"></label>
+      <label class="f"><span class="req">Time / slot</span><input type="text" name="apptSlot" required value="${L.ApptSlot}"></label></div>
+      ${L.Status === 'Home sample collection' ? html`<label class="f"><span>Address</span><textarea name="collectionAddress">${L.CollectionAddress}</textarea></label>` : ''}
+      <label class="f"><span>Note</span><input type="text" name="note"></label><p class="small muted">The patient will be offered M6 (rescheduled appointment).</p>`;
+  } else if (kind === 'upload') {
+    const persons = L.BookingType === 'Couple' ? ['P', 'S', 'B'] : ['P'];
+    const act = d.reports.filter(r => r.Active === true);
+    inner = html`<h3>Upload report PDF</h3><div class="grid g2">
+      <label class="f"><span class="req">Report for</span><select name="personTag">${persons.map(p => html`<option value="${p}" ${d.missingReports[0] === p ? raw('selected') : ''}>${personName(p)}${p === 'B' ? ' (combined)' : ''}</option>`)}</select></label>
+      <label class="f"><span class="req">PDF file (max ${S.boot.cfg.MAX_REPORT_PDF_MB} MB)</span><input type="file" name="file" accept="application/pdf,.pdf" required></label></div>
+      ${act.length ? html`<label class="f"><span>Replaces (for corrected reports)</span><select name="replaceReportId"><option value="">— New report —</option>${act.map(r => html`<option value="${r.ReportID}">${r.FileName} (${personName(r.PersonTag)})</option>`)}</select></label>` : ''}
+      <label class="f"><span>Note</span><input type="text" name="note"></label>
+      ${L.Status === 'Test done' ? html`<label class="check"><input type="checkbox" name="markGenerated" checked> Mark "Test report generated" once every person has a report</label>` : ''}
+      <p class="small muted">File names never contain patient names. Every view of this PDF is logged.</p>`;
+  } else if (kind === 'uploadRx') {
+    inner = html`<h3>${d.prescription ? 'Replace' : 'Upload'} prescription photo</h3>
+      <label class="f"><span class="req">Photo (JPG/PNG, max ${S.boot.cfg.MAX_PRESCRIPTION_MB} MB)</span><input type="file" name="file" accept="image/jpeg,image/png,image/*" capture="environment" required></label>
+      ${d.prescription ? html`<p class="small muted">Replaces ${d.prescription.fileName} (uploaded ${fdate(d.prescription.uploadedAt)}). The old photo is removed from Drive.</p>` : ''}`;
+  } else if (kind === 'payment') {
+    inner = html`<h3>Patient payment</h3>${paymentFields(L, false)}`;
+  } else if (kind === 'tests') {
+    const couple = L.BookingType === 'Couple';
+    const editable = d.lines.filter(l => l.Active && (l.ItemType !== 'PackageComponent' || role === 'Admin'));
+    inner = html`<h3>Edit tests</h3><p class="small muted">${role === 'Clinic Manager' ? 'You can edit tests until the partner calls.' : 'Adding or removing tests re-prices the lead from the active rate card and is audit-logged.'}</p>
+      <div class="pick">${editable.map(l => html`<div class="opt"><span class="grow">${l.ItemName} <span class="muted small">· ${personName(l.PersonTag)}</span></span>
+        <span class="price small">${l.ItemType === 'PackageComponent' ? 'component' : inr(l.FrozenPatientPrice)}</span>
+        ${l.IsDone && role !== 'Admin' ? html`<span class="chip good">done</span>` : html`<button type="button" class="btn btn-sm btn-ghost" data-act="rm-line" data-line="${l.LeadTestID}">Remove</button>`}</div>`)}</div>
+      <div class="row" style="margin-top:10px"><select name="code" class="grow" style="min-width:220px"><option value="">Add a test or package…</option>${(d.catalogue || []).map(c => html`<option value="${c.code}">${c.name} — ${inr(c.price)}${c.type === 'Package' ? ' (package)' : ''}</option>`)}</select>
+      ${couple ? html`<select name="tag" style="width:130px"><option value="P">Patient</option><option value="S">Spouse</option><option value="B">Both</option></select>` : ''}
+      <button type="button" class="btn btn-sm" data-act="add-item">Add</button></div>
+      <label class="f" style="margin-top:8px"><span>Reason for removal (required for removals after the call)</span><input type="text" name="note"></label>`;
+  } else if (kind === 'edit') {
+    const admin = role === 'Admin';
+    const F = ['PatientName', 'Age', 'Phone', 'Pincode'].concat(L.BookingType === 'Couple' ? ['SpouseName', 'SpouseAge'] : []).concat(['ReferringDoctor', 'Urgency', 'PreferredMode', 'NotesForLab']).concat(admin ? ['CollectionAddress', 'ApptSlot'] : []);
+    inner = html`<h3>Edit details</h3><div class="grid g2">${F.map(k => k === 'Urgency' ? html`<label class="f"><span>${k}</span><select name="${k}"><option ${L.Urgency === 'Normal' ? raw('selected') : ''}>Normal</option><option ${L.Urgency === 'Urgent' ? raw('selected') : ''}>Urgent</option></select></label>`
+      : k === 'PreferredMode' ? html`<label class="f"><span>${k}</span><select name="${k}"><option value="">—</option><option ${L.PreferredMode === 'Lab visit' ? raw('selected') : ''}>Lab visit</option><option ${L.PreferredMode === 'Home collection' ? raw('selected') : ''}>Home collection</option></select></label>`
+      : html`<label class="f"><span>${k}</span><input type="text" name="${k}" value="${L[k] === undefined ? '' : L[k]}"></label>`)}</div>
+      ${admin ? html`<label class="f"><span class="req">Audit note</span><input type="text" name="__note" required></label>` : ''}`;
+  } else if (kind === 'dispute') {
+    inner = html`<h3>Flag a discrepancy</h3><label class="f"><span class="req">What is wrong?</span><textarea name="note" required placeholder="e.g. Patient says the AMH test was not done"></textarea></label><p class="small muted">The DCP Admin reviews flags and decides whether to mark the lead Disputed.</p>`;
+  } else if (kind === 'note') {
+    inner = html`<h3>Add note</h3><label class="f"><span class="req">Note</span><textarea name="note" required></textarea></label>`;
+  } else if (kind === 'reroute') {
+    inner = html`<h3>Re-route lead (Admin)</h3><div class="grid g2"><label class="f"><span>Clinic</span><select name="clinicId">${S.boot.clinics.map(c => html`<option value="${c.id}" ${c.id === L.ClinicID ? raw('selected') : ''}>${c.name}</option>`)}</select></label>
+      <label class="f"><span>Partner</span><select name="partnerId">${(d.partners || []).map(p => html`<option value="${p.id}" ${p.id === L.PartnerID ? raw('selected') : ''}>${p.name}</option>`)}</select></label></div>
+      <label class="f"><span class="req">Note</span><input type="text" name="note" required></label><p class="small muted">Changing partner re-freezes prices from the new partner's active rate card.</p>`;
+  } else if (kind === 'rating') {
+    inner = html`<h3>Record M9 satisfaction rating</h3><label class="f" style="max-width:220px"><span class="req">Patient's reply</span><select name="rating" required><option value="">Select…</option>${[5, 4, 3, 2, 1].map(n => html`<option>${n}</option>`)}</select></label>`;
+  } else if (kind === 'override') {
+    const l = d.lines.find(x => x.LeadTestID === el.dataset.line);
+    inner = html`<h3>Override price · ${l.ItemName}</h3><input type="hidden" name="leadTestId" value="${l.LeadTestID}"><div class="grid g3">
+      <label class="f"><span>MRP</span><input type="number" step="0.01" name="mrp" value="${l.FrozenMRP}"></label>
+      <label class="f"><span>Patient price</span><input type="number" step="0.01" name="price" value="${l.FrozenPatientPrice}"></label>
+      <label class="f"><span>Gynoveda margin</span><input type="number" step="0.01" name="margin" value="${l.FrozenMarginRs}"></label></div>
+      <label class="f"><span class="req">Audit note</span><input type="text" name="note" required></label>`;
+  }
+  $('#lead-form').innerHTML = html`<form class="col" id="x-form" data-kind="${kind}" style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">${inner}
+    ${kind === 'tests' ? html`<div class="actions"><button class="btn btn-ghost" type="button" data-act="f-close">Done</button></div>` : html`<div class="actions"><button class="btn" type="submit">Save</button><button class="btn btn-ghost" type="button" data-act="f-close">Cancel</button></div>`}</form>`.s;
+  $('#x-form').onsubmit = submitLeadForm;
+};
+
+async function submitLeadForm(e) {
+  e.preventDefault();
+  const form = e.target, kind = form.dataset.kind, f = formData(form), id = S.lead.lead.LeadID;
+  try {
+    let r = null;
+    if (kind === 'progress') {
+      const updates = $$('input[name=line]:checked', form).map(c => ({ leadTestId: c.value })).concat($$('input[name=undo]:checked', form).map(c => ({ leadTestId: c.value, undo: true })));
+      r = await api('lead.progress', { leadId: id, updates: updates, nextScanDate: f.nextScanDate });
+      toast(r.allDone ? 'All tests complete — mark Test done' : 'Progress saved', 'ok');
+    } else if (kind === 'reschedule') {
+      r = await api('lead.reschedule', Object.assign(f, { leadId: id })); toast('Rescheduled', 'ok');
+    } else if (kind === 'upload') {
+      const file = $('input[type=file]', form).files[0];
+      if (!file) throw new Error('Choose a PDF file.');
+      if (file.size > S.boot.cfg.MAX_REPORT_PDF_MB * 1048576) throw new Error('The PDF is larger than ' + S.boot.cfg.MAX_REPORT_PDF_MB + ' MB.');
+      const b64 = await readFileB64(file);
+      r = await api('report.upload', { leadId: id, personTag: f.personTag, fileName: file.name, b64: b64, replaceReportId: f.replaceReportId || '', note: f.note, markGenerated: !!f.markGenerated });
+      toast(r.transitioned ? 'Report uploaded — marked report generated' : 'Report uploaded', 'ok');
+      if (r.transitioned) r = r.transitioned;
+    } else if (kind === 'uploadRx') {
+      const file = $('input[type=file]', form).files[0];
+      if (!file) throw new Error('Choose a photo.');
+      if (!/^image\/(jpeg|png)$/.test(file.type)) throw new Error('Only JPG or PNG photos can be uploaded.');
+      if (file.size > S.boot.cfg.MAX_PRESCRIPTION_MB * 1048576) throw new Error('The photo is larger than ' + S.boot.cfg.MAX_PRESCRIPTION_MB + ' MB.');
+      const b64rx = await readFileB64(file);
+      r = await api('lead.uploadPrescription', { leadId: id, b64: b64rx, note: f.note });
+      toast('Prescription photo saved', 'ok');
+    } else if (kind === 'payment') {
+      r = await api('lead.payment', Object.assign(f, { leadId: id })); toast('Payment recorded', 'ok');
+    } else if (kind === 'edit') {
+      const fields = {}; Object.keys(f).forEach(k => { if (k !== '__note' && String(f[k]) !== String(S.lead.lead[k] === undefined ? '' : S.lead.lead[k])) fields[k] = f[k]; });
+      r = await api('lead.edit', { leadId: id, fields: fields, note: f.__note }); toast('Saved', 'ok');
+    } else if (kind === 'dispute') { r = await api('lead.flagDispute', { leadId: id, note: f.note }); toast('Flag sent to the DCP Admin', 'ok'); }
+    else if (kind === 'note') { r = await api('lead.note', { leadId: id, note: f.note }); toast('Note added', 'ok'); }
+    else if (kind === 'reroute') { r = await api('lead.reroute', Object.assign(f, { leadId: id })); toast('Re-routed', 'ok'); }
+    else if (kind === 'rating') { r = await api('msg.rating', { leadId: id, rating: f.rating }); toast('Rating saved', 'ok'); }
+    else if (kind === 'override') { r = await api('lead.overrideLine', Object.assign(f, { leadId: id })); toast('Price overridden', 'ok'); }
+    await refreshLead(r && r.message);
+  } catch (err) { fail(err); }
+}
+ACT['add-item'] = async () => {
+  const form = $('#x-form'), f = formData(form);
+  if (!f.code) { toast('Choose a test or package', 'err'); return; }
+  try { const r = await api('lead.addItem', { leadId: S.lead.lead.LeadID, code: f.code, tag: f.tag || 'P' }); (r.warnings || []).forEach(w => toast(w)); toast('Added · new total ' + inr(r.patientPrice), 'ok'); await refreshLead(); ACT['f-open']({ dataset: { form: 'tests' } }); } catch (e) { fail(e); }
+};
+ACT['rm-line'] = async el => {
+  const note = ($('#x-form [name=note]') || {}).value || '';
+  try { const r = await api('lead.removeLine', { leadId: S.lead.lead.LeadID, leadTestId: el.dataset.line, note: note }); toast('Removed · new total ' + inr(r.patientPrice), 'ok'); await refreshLead(); ACT['f-open']({ dataset: { form: 'tests' } }); } catch (e) { fail(e); }
+};
+ACT['optout'] = async () => {
+  const L = S.lead.lead;
+  try { await api('lead.optout', { leadId: L.LeadID, optOut: L.OptOut !== true }); toast(L.OptOut === true ? 'Opt-out removed' : 'Marked opted out', 'ok'); await refreshLead(); } catch (e) { fail(e); }
+};
+ACT['report-view'] = async el => {
+  const leadId = S.modalLeadId;
+  try {
+    const r = await api('report.get', { reportId: el.dataset.id });
+    const url = URL.createObjectURL(b64ToBlob(r.b64, r.mime));
+    const b = openModal(r.fileName, html`<div class="row" style="margin-bottom:10px"><a class="btn btn-sm" href="${url}" download="${r.fileName}">Download</a>
+      <a class="btn btn-sm btn-ghost" href="${url}" target="_blank" rel="noopener">Open in new tab</a>${leadId ? html`<button class="btn btn-sm btn-ghost" data-act="back-lead" data-id="${leadId}">← Back to lead</button>` : ''}</div>
+      <iframe src="${url}" title="Report" style="width:100%;height:75vh;border:1px solid var(--line);border-radius:8px"></iframe>`, { wide: true });
+  } catch (e) { fail(e); }
+};
+ACT['rx-view'] = async () => {
+  const leadId = S.modalLeadId;
+  try {
+    const r = await api('lead.getPrescription', { leadId: leadId });
+    const url = URL.createObjectURL(b64ToBlob(r.b64, r.mime));
+    openModal(r.fileName, html`<div class="row" style="margin-bottom:10px"><a class="btn btn-sm" href="${url}" download="${r.fileName}">Download</a>
+      <a class="btn btn-sm btn-ghost" href="${url}" target="_blank" rel="noopener">Open in new tab</a>${leadId ? html`<button class="btn btn-sm btn-ghost" data-act="back-lead" data-id="${leadId}">← Back to lead</button>` : ''}</div>
+      <img src="${url}" alt="Prescription" style="max-width:100%;border:1px solid var(--line);border-radius:8px;display:block;margin:0 auto">`, { wide: true });
+  } catch (e) { fail(e); }
+};
+ACT['back-lead'] = el => openLead(el.dataset.id);
+</script>
+
+<script>
+/* ======================= NEW LEAD (BRD §3) ======================= */
+const CAP = { sel: {}, dupTimer: null, ack: false };
+
+VIEWS.newlead = main => {
+  const clinics = S.boot.clinics.filter(c => c.status !== 'Closed');
+  const def = clinics.find(c => c.canCapture) || clinics[0];
+  if (!def) { main.innerHTML = html`<div class="card empty">No clinic is assigned to your login. Contact the DCP Admin.</div>`.s; return; }
+  CAP.sel = {}; CAP.ack = false;
+  main.innerHTML = html`<div style="max-width:820px;margin:0 auto">
+    <div class="row between" style="margin-bottom:10px"><h2>New diagnostic lead</h2><span class="muted small">${fdate(todayStr())}</span></div>
+    <form id="cap" class="col" autocomplete="off">
+      <div class="card col">
+        ${clinics.length > 1 ? html`<label class="f"><span class="req">Clinic</span><select name="clinicId" id="cap-clinic">${clinics.map(c => html`<option value="${c.id}" ${c.id === def.id ? raw('selected') : ''}>${c.name}${c.canCapture ? '' : ' (not accepting leads)'}</option>`)}</select></label>`
+          : html`<input type="hidden" name="clinicId" id="cap-clinic" value="${def.id}"><div class="row"><b>${def.name}</b><span class="muted small">· routed to ${def.partner}</span></div>`}
+        <div id="cap-block"></div>
+        <div class="grid g2">
+          <label class="f"><span class="req">Patient name</span><input type="text" name="patientName" required maxlength="80"></label>
+          <div class="grid g2"><label class="f"><span class="req">Gender</span><select name="gender" id="cap-gender"><option value="F">Female</option><option value="M">Male</option></select></label>
+            <label class="f"><span class="req">Age</span><input type="number" name="age" required min="18" max="65" inputmode="numeric"></label></div>
+          <label class="f"><span class="req">Mobile</span><input type="tel" name="phone" id="cap-phone" required inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" placeholder="10-digit mobile"></label>
+          <label class="f"><span class="req">Pincode</span><input type="text" name="pincode" required inputmode="numeric" maxlength="6" pattern="[1-9][0-9]{5}"></label>
+        </div>
+        <div class="row"><span class="small muted" style="min-width:90px">Booking</span>
+          <div class="seg"><label><input type="radio" name="bookingType" value="Individual" checked><span>Individual</span></label><label><input type="radio" name="bookingType" value="Couple"><span>Couple</span></label></div></div>
+        <div id="cap-spouse" class="grid g3 hide">
+          <label class="f"><span class="req">Spouse name</span><input type="text" name="spouseName" maxlength="80"></label>
+          <label class="f"><span class="req">Spouse age</span><input type="number" name="spouseAge" min="${S.boot.cfg.SPOUSE_AGE_MIN}" max="${S.boot.cfg.SPOUSE_AGE_MAX}" inputmode="numeric"></label>
+          <label class="f"><span class="req">Spouse gender</span><select name="spouseGender"><option value="M">Male</option><option value="F">Female</option></select></label>
+        </div>
+        <div class="grid g2">
+          <label class="f"><span class="req">Referring doctor</span><select name="referringDoctor" id="cap-doc" required></select></label>
+          <label class="f hide" id="cap-doc-other"><span class="req">Doctor's name</span><input type="text" name="referringDoctorOther" maxlength="80"></label>
+        </div>
+        <label class="f"><span class="req">Patient's visit to this clinic</span><select name="visitNumber" required>
+          ${Array.from({length: 10}, (_, i) => i + 1).map(n => html`<option value="${n}">V${n}${n === 1 ? ' — first visit' : ''}</option>`)}
+          <option value="11">V11+</option>
+        </select>
+        <span class="small muted">Which visit is this — has the patient been here before and not taken the test, or is this their first time?</span></label>
+      </div>
+
+      ${S.boot.cfg.RX_ENABLED ? html`<div class="card col">
+        <h3>Prescription pad photo <span class="small muted">(optional)</span></h3>
+        <label class="f"><span>Photo (JPG/PNG, max ${S.boot.cfg.MAX_PRESCRIPTION_MB} MB)</span><input type="file" name="rxFile" id="cap-rx" accept="image/jpeg,image/png,image/*" capture="environment"></label>
+        <div id="cap-rx-preview"></div>
+        <p class="small muted">Photograph the doctor's prescription pad clearly. It's attached to this lead for the lab/partner to see — the lead still submits fine if you skip this.</p>
+      </div>` : ''}
+
+      <div class="card col">
+        <div class="row between"><h3>Recommended tests</h3><input type="search" id="cap-find" placeholder="Find a test…" style="max-width:240px"></div>
+        <div id="cap-hint" class="small muted">Only items on ${def.partner}'s active rate card are listed, with the special Gynoveda price.</div>
+        <div class="pick" id="cap-items"></div>
+        <div class="row between" id="cap-total" style="padding-top:4px"></div>
+      </div>
+
+      <div class="card col">
+        <div class="grid g3">
+          <label class="f"><span>Urgency</span><select name="urgency"><option>Normal</option><option>Urgent</option></select></label>
+          <label class="f"><span>Preferred mode</span><select name="preferredMode" id="cap-mode"><option value="">No preference</option><option>Lab visit</option><option>Home collection</option></select></label>
+        </div>
+        <div id="cap-mode-note"></div>
+        <label class="f"><span>Notes for the lab</span><textarea name="notesForLab" maxlength="500" placeholder="Clinical context, cycle-day timing…"></textarea></label>
+        <label class="check panel"><input type="checkbox" name="consent" required>
+          <span><b>Patient consent (DPDP Act, 2023)</b><br><span class="small">I have obtained verbal consent from the patient<span id="cap-consent-sp" class="hide"> and spouse</span> to share their name, mobile number, pincode and recommended tests with the assigned diagnostic partner and lab, only for scheduling, sample collection, testing, report delivery and service updates by phone, WhatsApp or SMS.</span></span></label>
+        <div id="cap-dup"></div>
+        <div class="actions"><button class="btn" type="submit" id="cap-submit">Submit lead</button><button class="btn btn-ghost" type="reset" data-act="cap-reset">Clear</button></div>
+      </div>
+    </form></div>`.s;
+  const form = $('#cap');
+  const refresh = () => capRefresh(form);
+  form.addEventListener('change', e => { if (e.target.name !== 'referringDoctorOther') refresh(); if (e.target.name === 'phone') capDupCheck(form); });
+  $('#cap-phone').addEventListener('blur', () => capDupCheck(form));
+  $('#cap-find').addEventListener('input', () => capRenderItems(form));
+  if ($('#cap-rx')) $('#cap-rx').addEventListener('change', () => capRxPreview(form));
+  form.onsubmit = e => { e.preventDefault(); capSubmit(form); };
+  refresh();
+};
+ACT['cap-reset'] = () => setTimeout(() => go('newlead'), 0);
+
+function capRxPreview(form) {
+  const input = $('#cap-rx', form), box = $('#cap-rx-preview'), file = input.files[0];
+  if (!file) { box.innerHTML = ''; return; }
+  const maxMB = S.boot.cfg.MAX_PRESCRIPTION_MB;
+  if (!/^image\/(jpeg|png)$/.test(file.type)) { box.innerHTML = html`<div class="alert err">Only JPG or PNG photos are allowed.</div>`.s; input.value = ''; return; }
+  if (file.size > maxMB * 1048576) { box.innerHTML = html`<div class="alert err">That photo is larger than ${maxMB} MB — retake it at a lower resolution or crop it.</div>`.s; input.value = ''; return; }
+  const url = URL.createObjectURL(file);
+  box.innerHTML = html`<div class="row" style="align-items:flex-start;gap:10px"><img src="${url}" style="max-width:160px;max-height:160px;border:1px solid var(--line);border-radius:8px;object-fit:cover">
+    <div class="small muted">${file.name} · ${(file.size / 1048576).toFixed(1)} MB<br><button type="button" class="btn-link small" data-act="cap-rx-clear">Remove</button></div></div>`.s;
+}
+ACT['cap-rx-clear'] = () => { const input = $('#cap-rx'); if (input) input.value = ''; $('#cap-rx-preview').innerHTML = ''; };
+
+function capClinic(form) { const id = $('#cap-clinic', form).value; return S.boot.clinics.find(c => c.id === id); }
+function capItems(form) { const c = capClinic(form); return (S.boot.catalogues[c.partnerId] || []); }
+function capRefresh(form) {
+  const c = capClinic(form), f = formData(form);
+  $('#cap-block').innerHTML = c.canCapture ? '' : html`<div class="alert err">${c.captureBlock}</div>`.s;
+  $('#cap-submit').disabled = !c.canCapture;
+  const couple = f.bookingType === 'Couple';
+  $('#cap-spouse').classList.toggle('hide', !couple);
+  $$('#cap-spouse input, #cap-spouse select').forEach(i => { i.required = couple; });
+  $('#cap-consent-sp').classList.toggle('hide', !couple);
+  const doc = $('#cap-doc');
+  if (doc.dataset.clinic !== c.id) {
+    doc.dataset.clinic = c.id;
+    const docs = c.doctors.filter(d => !/^Other/i.test(d));
+    doc.innerHTML = html`${docs.length !== 1 ? html`<option value="">Select…</option>` : ''}${docs.map(d => html`<option>${d}</option>`)}<option value="Other — type name">Other — type name</option>`.s;
+  }
+  const other = /^Other/.test(doc.value);
+  $('#cap-doc-other').classList.toggle('hide', !other);
+  $('#cap-doc-other input').required = other;
+  capRenderItems(form);
+}
+function capPersonGenders(f) { return { P: f.gender, S: f.bookingType === 'Couple' ? f.spouseGender : '' }; }
+function capItemHint(item, f) {
+  const g = capPersonGenders(f), couple = f.bookingType === 'Couple';
+  if (item.type === 'Package') {
+    const needM = item.maleCodes.length > 0, needF = item.femaleCodes.length > 0;
+    const hasM = g.P === 'M' || g.S === 'M', hasF = g.P === 'F' || g.S === 'F';
+    if ((needM && !hasM) || (needF && !hasF)) {
+      const side = needM && !hasM ? 'male' : 'female';
+      return S.boot.cfg.PACKAGE_INDIVIDUAL_RULE === 'REQUIRE_COUPLE' ? { block: 'Includes ' + side + ' tests — switch to Couple' } : { warn: side + ' components will be skipped' };
+    }
+    return {};
+  }
+  if (!couple) {
+    if (item.gender === 'M' && g.P === 'F') return { block: 'Male-only — use Couple' };
+    if (item.gender === 'F' && g.P === 'M') return { block: 'Female patients only' };
+  }
+  return {};
+}
+function capRenderItems(form) {
+  const f = formData(form), items = capItems(form), q = ($('#cap-find').value || '').toLowerCase();
+  const couple = f.bookingType === 'Couple';
+  Object.keys(CAP.sel).forEach(code => { if (!items.some(i => i.code === code)) delete CAP.sel[code]; });
+  $('#cap-items').innerHTML = items.filter(i => !q || i.name.toLowerCase().indexOf(q) >= 0 || CAP.sel[i.code]).map(i => {
+    const hint = capItemHint(i, f), on = !!CAP.sel[i.code];
+    const comps = i.type === 'Package' ? 'Includes: ' + i.components.F.map(c => c.name).join(', ') + (i.components.M.length ? ' · Male: ' + i.components.M.map(c => c.name).join(', ') : '') : '';
+    return html`<div class="opt ${on ? 'sel' : ''}">
+      <input type="checkbox" data-code="${i.code}" class="cap-pick" ${on ? raw('checked') : ''} ${hint.block && !on ? raw('disabled') : ''}>
+      <span class="grow"><b>${i.name}</b>${i.type === 'Package' ? html` <span class="chip plum">Package</span>` : ''}${i.scans > 1 ? html` <span class="chip info">${i.scans} scans</span>` : ''}${!i.home ? html` <span class="chip" title="Lab visit only">Lab visit</span>` : ''}
+        ${hint.block ? html` <span class="chip bad">${hint.block}</span>` : hint.warn ? html` <span class="chip warn">${hint.warn}</span>` : ''}
+        ${comps ? html`<br><span class="small muted">${comps}</span>` : ''}</span>
+      ${couple && i.type === 'SingleTest' && on ? html`<select class="cap-tag" data-code="${i.code}" style="width:110px;min-height:30px;padding:3px 6px">
+        ${['P', 'S', 'B'].map(t => html`<option value="${t}" ${CAP.sel[i.code] === t ? raw('selected') : ''}>${personName(t)}</option>`)}</select>` : ''}
+      <span class="price"><b>${inr(i.price)}</b>${i.mrp > i.price ? html`<br><s class="small muted">${inr(i.mrp)}</s>` : ''}</span></div>`.s;
+  }).join('') || html`<div class="empty">No matching tests.</div>`.s;
+  $$('.cap-pick', form).forEach(cb => cb.onchange = () => {
+    if (cb.checked) CAP.sel[cb.dataset.code] = defaultTag(items.find(i => i.code === cb.dataset.code), f); else delete CAP.sel[cb.dataset.code];
+    capRenderItems(form); capDupCheck(form);
+  });
+  $$('.cap-tag', form).forEach(s => s.onchange = () => { CAP.sel[s.dataset.code] = s.value; capRenderItems(form); });
+  // totals (B-tagged single tests are priced for both persons)
+  let mrp = 0, price = 0, n = 0, labOnly = false;
+  Object.keys(CAP.sel).forEach(code => {
+    const i = items.find(x => x.code === code); if (!i) return;
+    const mult = i.type === 'SingleTest' && couple && CAP.sel[code] === 'B' ? 2 : 1;
+    mrp += i.mrp * mult; price += i.price * mult; n += mult; if (!i.home) labOnly = true;
+  });
+  $('#cap-total').innerHTML = html`<span class="small muted">${n} item(s) selected</span><span>${mrp > price ? html`<s class="muted small">${inr(mrp)}</s> ` : ''}<b style="font-size:16px">${inr(price)}</b>${mrp > price ? html` <span class="chip good">Patient saves ${inr(mrp - price)}</span>` : ''}</span>`.s;
+  $('#cap-mode-note').innerHTML = labOnly && f.preferredMode === 'Home collection' ? html`<div class="alert warn">A selected scan/imaging test needs a lab visit — the mode will be set to Lab visit.</div>`.s : '';
+}
+function defaultTag(i, f) {
+  if (f.bookingType !== 'Couple' || !i) return 'P';
+  const g = capPersonGenders(f);
+  if (i.gender === 'M') return g.P === 'M' ? 'P' : 'S';
+  if (i.gender === 'F') return g.P === 'F' ? 'P' : 'S';
+  return 'P';
+}
+function capDupCheck(form) {
+  clearTimeout(CAP.dupTimer);
+  CAP.dupTimer = setTimeout(async () => {
+    const f = formData(form);
+    if (!/^[6-9]\d{9}$/.test(f.phone || '') || !Object.keys(CAP.sel).length) { $('#cap-dup').innerHTML = ''; return; }
+    try {
+      const r = await api('lead.dupcheck', { clinicId: f.clinicId, phone: f.phone, codes: Object.keys(CAP.sel) }, { silent: true });
+      $('#cap-dup').innerHTML = r.matches.length ? html`<div class="alert warn"><b>Possible duplicate.</b> This mobile already has a lead with an overlapping test in the last ${r.windowDays} days:
+        ${r.matches.map(m => html`<br>· ${m.leadId} at ${m.clinic} on ${fdate(m.created)} (${m.status}) — ${m.overlapping}`)}
+        <br><span class="small">You can still submit; the pair goes to the Admin's duplicate review. The first clinic to capture keeps the credit.</span></div>`.s : '';
+    } catch (e) { /* non-blocking */ }
+  }, 400);
+}
+async function capSubmit(form, acknowledge) {
+  const f = formData(form);
+  const items = Object.keys(CAP.sel).map(code => ({ code: code, tag: CAP.sel[code] }));
+  if (!items.length) { toast('Select at least one test or package', 'err'); return; }
+  if (!f.consent) { toast('Patient consent is required', 'err'); return; }
+  const payload = Object.assign({}, f, { items: items, consent: true, acknowledgeDuplicate: !!acknowledge, age: Number(f.age), spouseAge: f.spouseAge ? Number(f.spouseAge) : '' });
+  delete payload.rxFile;
+  $('#cap-submit').disabled = true;
+  try {
+    const rxInput = $('#cap-rx', form), rxFile = rxInput && rxInput.files[0];
+    if (rxFile) payload.rxB64 = await readFileB64(rxFile);
+    const r = await api('lead.create', payload);
+    capSuccess(r, f);
+  } catch (e) {
+    $('#cap-submit').disabled = false;
+    if (e.code === 'DUPLICATE_WARNING') {
+      if (await confirmBox(e.message + ' Submit anyway?', 'Submit anyway')) capSubmit(form, true);
+      return;
+    }
+    fail(e);
+  }
+}
+function capSuccess(r, f) {
+  // Free lab-side alert: the lab was already emailed server-side; best-effort auto-open a
+  // click-to-WhatsApp tab per distinct lab manager too. Most browsers only allow this right after
+  // a user gesture, so it can be silently blocked — the buttons below are the reliable fallback.
+  (r.labAlerts || []).forEach(a => { try { window.open(a.link, '_blank', 'noopener'); } catch (e) { /* popup blocked */ } });
+  $('#main').innerHTML = html`<div style="max-width:620px;margin:0 auto"><div class="card col">
+    <div class="alert ok"><b>Lead submitted.</b> Routed to ${r.partner}, who will call within 24 hours.</div>
+    <dl class="kv"><dt>Lead ID</dt><dd class="mono"><b>${r.leadId}</b></dd><dt>Patient</dt><dd>${f.patientName}</dd>
+      <dt>Payable at lab</dt><dd><b>${inr(r.patientPrice)}</b>${r.mrp > r.patientPrice ? html` <span class="muted small">(MRP ${inr(r.mrp)})</span>` : ''}</dd></dl>
+    ${(r.warnings || []).map(w => html`<div class="alert warn">${w}</div>`)}
+    ${r.duplicates && r.duplicates.length ? html`<div class="alert info">Logged for duplicate review with ${r.duplicates.join(', ')}.</div>` : ''}
+    ${r.m1 ? html`<div class="panel"><b>Send the welcome message (M1) to the patient</b><p class="small">${r.m1.text}</p>
+      <a class="btn btn-wa" href="${r.m1.link}" target="_blank" rel="noopener" data-act="wa-log" data-lead="${r.leadId}" data-code="M1">Send on WhatsApp</a></div>` : ''}
+    ${(r.labAlerts || []).length ? html`<div class="panel"><b>Lab alert</b><p class="small">${r.labAlerts.length === 1 ? 'The lab manager has' : 'All ' + r.labAlerts.length + ' lab managers have'} been emailed. A WhatsApp tab may have opened automatically — if your browser blocked it, tap below to send it yourself:</p>
+      <div class="row" style="flex-wrap:wrap;gap:8px">${r.labAlerts.map(a => html`<a class="btn btn-wa btn-sm" href="${a.link}" target="_blank" rel="noopener">WhatsApp ${a.name || a.labName || 'lab manager'}</a>`)}</div></div>` : ''}
+    <div class="actions"><button class="btn" data-act="nav" data-view="newlead">Capture another lead</button><button class="btn btn-ghost" data-act="open-lead" data-id="${r.leadId}">Open this lead</button></div>
+  </div></div>`.s;
+}
+</script>
+
+<script>
+/* ======================= DASHBOARD (BRD §9.1) ======================= */
+const DASH = { data: null, monthly: null, expS: new Set(), expC: new Set() };
+VIEWS.dashboard = async main => {
+  const b = S.boot;
+  const to = todayStr(), from = addDays(to, -29);
+  main.innerHTML = html`<div class="row between" style="margin-bottom:10px"><h2>Pilot dashboard</h2></div>
+    <div id="pulse-body"><div class="card empty">Loading…</div></div>
+    <!-- MoM comparison filters -->
+    <form class="card grid g4" id="dm-form" style="margin-top:12px;margin-bottom:0">
+      <label class="f"><span>Partner</span><select name="partnerId"><option value="">All partners</option>${(b.partners || []).map(p => html`<option value="${p.id}">${p.name}</option>`)}</select></label>
+      <label class="f"><span>Clinic</span><select name="clinicId"><option value="">All clinics</option>${b.clinics.map(c => html`<option value="${c.id}">${c.name}</option>`)}</select></label>
+      <label class="f"><span>Months to compare</span><select name="months"><option value="2">2 months</option><option value="3">3 months</option><option value="4">4 months</option><option value="6">6 months</option></select></label>
+    </form>
+    <div id="dm-body" class="section" style="margin-top:8px"><div class="card empty">Loading…</div></div>
+    <!-- Detailed KPI filters -->
+    <form class="card grid g5" id="d-form" style="margin-top:12px">
+      <label class="f"><span>From</span><input type="date" name="from" value="${from}"></label>
+      <label class="f"><span>To</span><input type="date" name="to" value="${to}"></label>
+      <label class="f"><span>Adoption month</span><input type="month" name="month" value="${to.slice(0, 7)}"></label>
+      <label class="f"><span>Partner</span><select name="partnerId"><option value="">All</option>${(b.partners || []).map(p => html`<option value="${p.id}">${p.name}</option>`)}</select></label>
+      <label class="f"><span>Clinic</span><select name="clinicId"><option value="">All</option>${b.clinics.map(c => html`<option value="${c.id}">${c.name}</option>`)}</select></label>
+    </form><div id="d-body" class="section"><div class="card empty">Loading…</div></div>`.s;
+
+  // Load MoM comparison table
+  const loadMonthly = async () => {
+    const f = formData($('#dm-form'));
+    try {
+      DASH.monthly = await api('dash.monthly', f);
+      renderMonthlyTable(DASH.monthly);
+      renderPulse();
+    } catch (e) { $('#dm-body').innerHTML = html`<div class="card empty">Could not load comparison: ${e.message}</div>`.s; }
+  };
+  $('#dm-form').onchange = loadMonthly;
+
+  // Load detailed KPI dashboard
+  const loadD = async () => {
+    const f = formData($('#d-form'));
+    try { renderDash(await api('dash.summary', f)); renderPulse(); } catch (e) { fail(e); }
+  };
+  $('#d-form').onchange = loadD;
+  await Promise.all([loadMonthly(), loadD()]);
+};
+
+/* NB: pass arrays of html`` results straight into the next html`` — never .join('') them first. Joining turns the Raw
+ * objects into plain strings, which the tag then escapes, and the table shows up as literal markup. */
+function renderMonthlyTable(d) {
+  if (!d || !d.months || !d.months.length) {
+    $('#dm-body').innerHTML = html`<div class="card empty">No data.</div>`.s;
+    return;
+  }
+  const months = d.months; // oldest → newest
+  // Build header: row label | Month1 MTD | Month2 MTD | …
+  const metrics = [
+    { key: 'liveClinics',   label: 'Live clinic',       unit: 'MTD', fmt: v => v === null ? '—' : v },
+    { key: 'leads',         label: 'leads',             unit: 'MTD', fmt: v => v === null ? '—' : v },
+    { key: 'adoption',      label: 'Adoption',          unit: '%',   fmt: v => v === null ? '—' : v + '%', highlight: true },
+    { key: 'noOfTests',     label: 'No. of tests',      unit: 'MTD', fmt: v => v === null ? '—' : v },
+    { key: 'testPerPatient',label: 'Test per patient',  unit: 'MTD', fmt: v => v === null ? '—' : v },
+    { key: 'maleTest',      label: 'Male test',         unit: 'MTD', fmt: v => v === null ? '—' : v },
+    { key: 'femaleTest',    label: 'Female test',       unit: 'MTD', fmt: v => v === null ? '—' : v },
+    { key: 'gynoMarginPct', label: 'Gyno Margin',       unit: '%',   fmt: v => v === null ? '—' : v + '%', highlight: false },
+    { key: 'gynoRevLakhs',  label: 'Gyno Rev.',         unit: 'INR', fmt: v => v === null ? '—' : v.toFixed(2) + ' L' }
+  ];
+  const hdr = html`<tr><th style="min-width:140px">GynoDcp${months.length > 1 ? months.length : ''}</th>${months.map(m => html`<th class="num" colspan="1">${m.label} <span class="small muted" style="font-weight:normal">▼</span></th>`)}</tr>`;
+  // Sub-header row for MTD/%/INR labels
+  const subHdr = html`<tr class="muted small"><td></td>${months.map(() => html`<td class="num"></td>`)}</tr>`;
+  const rows = metrics.map(mt => {
+    const cells = months.map((m, i) => {
+      const val = mt.fmt(m[mt.key]);
+      const prev = i > 0 ? m[mt.key] : null;
+      const prevVal = i > 0 ? months[i - 1][mt.key] : null;
+      // highlight adoption row red (below target) or color change
+      // Threshold raised from 10% to 50%: Adoption is now booked÷leads (expected to run much
+      // higher than the old footfall-based ratio), so 10% was never going to flag anything real.
+      const isAdoption = mt.highlight && m[mt.key] !== null && m[mt.key] < 50;
+      const style = isAdoption ? 'background:var(--bad-bg,#fff0f0);color:var(--bad)' : '';
+      return html`<td class="num" style="${style}">${val}</td>`;
+    });
+    return html`<tr><td>${mt.label} <span class="small muted">${mt.unit}</span></td>${cells}</tr>`;
+  });
+  $('#dm-body').innerHTML = html`<div class="card" style="padding:0"><div class="tblwrap"><table class="tbl" style="font-size:13px">
+    ${hdr}${rows}
+  </table></div></div>`.s;
+}
+
+/* ---------- Pulse: a "few seconds" read of the whole business ----------
+ * Built entirely from data already fetched for the MoM table (DASH.monthly) and the
+ * detailed KPI dashboard (DASH.data) — no extra API call. Renders once both are in,
+ * and re-renders whenever either source refreshes (its own filters changed).
+ */
+function pulseTrendPct(cur, prev) {
+  if (prev === null || prev === undefined || !isFinite(prev) || prev === 0) return null;
+  return Math.round((cur - prev) / prev * 1000) / 10;
+}
+function pulseTrend(cur, prev) {
+  const t = pulseTrendPct(cur, prev);
+  if (t === null) return { html: html`<span class="trend flat small">— vs last month</span>`, dir: 0 };
+  const dir = t > 0 ? 1 : t < 0 ? -1 : 0;
+  const cls = dir > 0 ? 'up' : dir < 0 ? 'down' : 'flat';
+  const arrow = dir > 0 ? '▲' : dir < 0 ? '▼' : '—';
+  return { html: html`<span class="trend ${cls} small">${arrow} ${Math.abs(t)}% vs last month</span>`, dir: dir };
+}
+function pulseKpi(kpis, key) { return (kpis || []).find(k => k.key === key) || { value: null, target: 0, status: '' }; }
+function renderPulse() {
+  const box = $('#pulse-body');
+  if (!box) return;
+  if (!DASH.monthly || !DASH.monthly.months || !DASH.monthly.months.length || !DASH.data) return;
+  const months = DASH.monthly.months, cur = months[months.length - 1], prev = months.length > 1 ? months[months.length - 2] : null;
+  const kConv = pulseKpi(DASH.data.kpis, 'conversion'), kAdopt = pulseKpi(DASH.data.kpis, 'adoption');
+  const breaches = DASH.data.breachCount || 0, disputed = DASH.data.disputed || 0, dupes = DASH.data.pendingDuplicates || 0;
+
+  const badSignals = (kConv.status === 'bad' ? 1 : 0) + (kAdopt.status === 'bad' ? 1 : 0) + (breaches > 0 ? 1 : 0) + (disputed > 0 ? 1 : 0);
+  const warnSignals = (kConv.status === 'warn' ? 1 : 0) + (kAdopt.status === 'warn' ? 1 : 0) + (dupes > 0 ? 1 : 0);
+  const level = badSignals >= 2 ? 'err' : (badSignals >= 1 || warnSignals >= 1) ? 'warn' : 'ok';
+  const verdict = level === 'err' ? 'Needs immediate attention' : level === 'warn' ? 'Needs attention' : 'On track';
+
+  const leadsTrend = pulseTrend(cur.leads, prev && prev.leads);
+  const revTrend = pulseTrend(cur.gynoRevLakhs, prev && prev.gynoRevLakhs);
+  const fmtPct = v => (v === null || v === undefined ? '—' : v + '%');
+
+  const banner = html`<div class="alert ${level} pulse-banner"><b>${cur.label}:</b> ${cur.leads} leads (${leadsTrend.html})
+    · Adoption <b>${fmtPct(kAdopt.value)}</b> (target ${kAdopt.target}%) · Conversion <b>${fmtPct(kConv.value)}</b> (target ${kConv.target}%)
+    · ${breaches} SLA breach${breaches === 1 ? '' : 'es'} · ${disputed} disputed${dupes ? ' · ' + dupes + ' duplicate review' + (dupes === 1 ? '' : 's') + ' pending' : ''}
+    — <b>${verdict}</b></div>`;
+
+  // These two are the ones people mix up — spelled out once, plainly, so the same
+  // explanation doesn't need repeating every time someone asks "why are these different?".
+  // Both now share the same lead population and the same rolling 30-day window — the only
+  // difference is how far down the funnel a lead has to get to count.
+  const explainer = html`<div class="card" style="margin-top:10px;background:var(--plum-50);border-color:var(--plum-100)">
+    <div class="row" style="gap:18px;align-items:flex-start">
+      <div class="grow"><b>Adoption</b> <span class="small muted">— of leads referred by the clinic, what share got the test BOOKED (early funnel checkpoint)</span>
+        ${kAdopt.detail ? html`<div class="small muted" style="margin-top:2px">${kAdopt.detail}</div>` : ''}</div>
+      <div class="grow"><b>Conversion</b> <span class="small muted">— of leads referred by the clinic, what share actually completed the test (late funnel checkpoint)</span>
+        ${kConv.detail ? html`<div class="small muted" style="margin-top:2px">${kConv.detail}</div>` : ''}</div>
+    </div>
+    <div class="small muted" style="margin-top:8px">Same leads, same rolling 30-day window — Adoption counts them the moment they book, Conversion only once the test is actually done. The gap between the two is where follow-through breaks down after booking, not a referral problem.</div>
+  </div>`;
+
+  const tile = (label, value, statusClass, sub) => html`<div class="card kpi lg ${statusClass}"><div class="small muted">${label}</div><div class="v">${value}</div><div>${sub}</div></div>`;
+  const trendClass = d => d.dir > 0 ? 'good' : d.dir < 0 ? 'bad' : '';
+  const tiles = html`<div class="grid g3" style="margin-top:10px">
+    ${tile('Leads this month', cur.leads, trendClass(leadsTrend), leadsTrend.html)}
+    ${tile('Adoption · booked', fmtPct(kAdopt.value), kAdopt.status, html`<span class="small muted">Target ${kAdopt.target}% · ${kAdopt.detail || ''}</span>`)}
+    ${tile('Conversion · test done', fmtPct(kConv.value), kConv.status, html`<span class="small muted">Target ${kConv.target}% · ${kConv.detail || ''}</span>`)}
+    ${tile('Gyno revenue', cur.gynoRevLakhs.toFixed(2) + ' L', trendClass(revTrend), revTrend.html)}
+    ${tile('SLA breaches', breaches, breaches > 0 ? 'bad' : 'good', html`<span class="small muted">${breaches > 0 ? 'Open now — see below' : 'All clear'}</span>`)}
+    ${tile('Disputes + dupes', disputed + dupes, (disputed + dupes) > 0 ? 'warn' : 'good', html`<span class="small muted">${disputed} disputed · ${dupes} duplicate review${dupes === 1 ? '' : 's'}</span>`)}
+  </div>`;
+
+  box.innerHTML = html`${banner}${explainer}${tiles}`.s;
+}
+
+function renderDash(d) {
+  DASH.data = d;
+  const maxW = Math.max(1, ...d.weeks.map(w => w.leads));
+  const maxM = Math.max(1, ...d.revenue.months.map(m => Math.max(m.earned, m.collected)));
+  $('#d-body').innerHTML = html`
+    <div class="grid g5">${d.kpis.map(k => html`<div class="card kpi ${k.status}"><div class="small muted">${k.label}</div>
+      <div class="v">${k.value === null ? '—' : k.value + '%'}</div><div class="small">Target ${k.target}%</div>${k.what ? html`<div class="small" style="font-style:italic">${k.what}</div>` : ''}<div class="small muted">${k.detail}</div></div>`)}</div>
+    <div class="grid g2 section">
+      <div class="card"><h3>Funnel · ${d.totals.leads} leads (${fdate(d.range.from)} – ${fdate(d.range.to)})</h3><div class="col" style="margin-top:10px">
+        ${d.funnel.map(f => html`<div class="row"><span style="width:170px" class="small">${f.stage}</span><div class="bar grow"><i style="width:${d.totals.leads ? Math.max(2, f.count / d.totals.leads * 100) : 0}%"></i><b>${f.count}</b></div>
+          <span class="small muted" style="width:90px;text-align:right">${f.pctOfLeads === null ? '' : f.pctOfLeads + '%'}${f.stepPct !== null && f.stepPct !== 100 ? ' · step ' + f.stepPct + '%' : ''}</span></div>`)}</div></div>
+      <div class="card"><h3>Commission</h3><dl class="kv" style="margin-top:10px">
+        <dt>Earned (period)</dt><dd><b>${inr(d.revenue.earnedInRange)}</b></dd><dt>Collected (period)</dt><dd><b>${inr(d.revenue.collectedInRange)}</b></dd>
+        <dt>On statements</dt><dd>${inr(d.revenue.statementEarned)} earned · ${inr(d.revenue.statementCollected)} collected</dd>
+        <dt>Outstanding</dt><dd><b style="color:var(--bad)">${inr(d.revenue.outstanding)}</b></dd>
+        ${Object.keys(d.revenue.byState).map(k => html`<dt>${k}</dt><dd>${inr(d.revenue.byState[k])}</dd>`)}</dl>
+        <h4 style="margin-top:12px">Earned vs collected · 6 months</h4><div class="spark">${d.revenue.months.map(m => html`<i title="${m.month} earned ${inr(m.earned)}" style="height:${m.earned / maxM * 100}%"></i><i title="${m.month} collected ${inr(m.collected)}" style="height:${m.collected / maxM * 100}%;background:var(--good)"></i>`)}</div>
+        <div class="row between small muted"><span>${d.revenue.months[0].month}</span><span>■ earned <span style="color:var(--good)">■ collected</span></span><span>${d.revenue.months[5].month}</span></div></div>
+    </div>
+    <div class="card section"><h3>Which visit takes up the test</h3><p class="small muted">Of leads referred this period, which clinic visit (V1, V2, V3…) the patient was on when referred.</p>
+      <div class="tblwrap" style="margin-top:8px"><table class="tbl"><tr><th>Visit</th><th class="num">Leads</th><th class="num">Test done</th><th class="num">Conversion</th></tr>
+      ${(d.byVisit || []).map(v => html`<tr><td>${v.visit}</td><td class="num">${v.leads}</td><td class="num">${v.testDone}</td><td class="num">${v.conversion === null ? '—' : v.conversion + '%'}</td></tr>`)}</table></div></div>
+    <div class="grid g2 section">
+      <div class="card"><div class="row between"><h3>SLA breaches & escalations · ${d.breachCount}</h3><span class="small muted">${Object.keys(d.breachByStage).map(k => k + ': ' + d.breachByStage[k]).join(' · ')}</span></div>
+        <div class="tblwrap" style="margin-top:8px;max-height:360px"><table class="tbl"><tr><th>Lead</th><th>Clinic</th><th>Status</th><th>SLA</th></tr>
+        ${d.breaches.map(x => html`<tr class="click" data-act="open-lead" data-id="${x.id}"><td class="lead-id">${x.id}</td><td>${x.clinic}</td><td>${x.status}</td><td><span class="chip bad">${x.label}</span></td></tr>`)}</table></div></div>
+      <div class="card"><h3>Leads per week</h3><div class="spark" style="margin-top:10px;height:120px">${d.weeks.map(w => html`<i title="week of ${w.week}: ${w.leads} leads, ${w.testDone} test done" style="height:${w.leads / maxW * 100}%"></i>`)}</div>
+        <div class="row between small muted"><span>${fdate(d.weeks[0].week)}</span><span>${fdate(d.weeks[d.weeks.length - 1].week)}</span></div>
+        <p class="small muted" style="margin-top:10px">Median report turnaround: ${d.medianReportTatH === null ? '—' : d.medianReportTatH + ' h'} · Duplicates pending: ${d.pendingDuplicates} · Disputed: ${d.disputed}</p></div>
+    </div>
+    <div class="card section"><h3>Partners</h3>${scoreTable(d.partners, true)}</div>
+    <div class="card section"><div class="row between"><h3>Clinics</h3><span class="small muted">${d.clinics.length} clinics in ${(d.byState || []).length} states · tap a row to expand</span></div>
+      <div id="dash-clinics">${clinicsTree(d)}</div></div>
+    <div class="card section"><h3>Labs</h3>${scoreTable(d.labs, false)}</div>`.s;
+}
+function clinicsTree(d) {
+  const states = d.byState || [], cities = d.byCity || [], clinics = d.clinics || [];
+  if (!states.length) return html`<div class="empty">No clinic activity in this range.</div>`;
+  const rows = [];
+  states.forEach(s => {
+    const open = DASH.expS.has(s.state);
+    rows.push(html`<tr class="click geo-row" data-act="dash-toggle-state" data-k="${s.state}">
+      <td><span class="chev">${open ? '▾' : '▸'}</span> <b>${s.state}</b> <span class="small muted">· ${s.clinicCount} clinic${s.clinicCount === 1 ? '' : 's'}</span></td>
+      <td class="num">${s.leads}</td><td class="num">${s.testDone}</td><td class="num">${s.conversion === null ? '—' : s.conversion + '%'}</td><td class="num">—</td><td class="num">—</td><td class="num">${inr(s.margin)}</td></tr>`);
+    if (!open) return;
+    cities.filter(c => c.state === s.state).forEach(c => {
+      const ck = s.state + '|' + c.city, cOpen = DASH.expC.has(ck);
+      rows.push(html`<tr class="click geo-row geo-2" data-act="dash-toggle-city" data-k="${ck}">
+        <td><span class="chev">${cOpen ? '▾' : '▸'}</span> ${c.city} <span class="small muted">· ${c.clinicCount}</span></td>
+        <td class="num">${c.leads}</td><td class="num">${c.testDone}</td><td class="num">${c.conversion === null ? '—' : c.conversion + '%'}</td><td class="num">—</td><td class="num">—</td><td class="num">${inr(c.margin)}</td></tr>`);
+      if (!cOpen) return;
+      clinics.filter(x => x.state === s.state && x.city === c.city).forEach(cl => rows.push(html`<tr class="geo-3">
+        <td class="small">${cl.name}</td><td class="num">${cl.leads}</td><td class="num">${cl.testDone}</td><td class="num">${cl.conversion === null ? '—' : cl.conversion + '%'}</td>
+        <td class="num">${cl.adoption === null ? '—' : cl.adoption + '%'}</td><td class="num">${cl.doctors}</td><td class="num">${inr(cl.margin)}</td></tr>`));
+    });
+  });
+  return html`<div class="tblwrap"><table class="tbl"><tr><th>State / city / clinic</th><th class="num">Leads</th><th class="num">Test done</th><th class="num">Conversion</th><th class="num">Adoption</th><th class="num">Doctors</th><th class="num">Margin</th></tr>${rows}</table></div>`;
+}
+ACT['dash-toggle-state'] = el => { const k = el.dataset.k; DASH.expS.has(k) ? DASH.expS.delete(k) : DASH.expS.add(k); $('#dash-clinics').innerHTML = clinicsTree(DASH.data).s; };
+ACT['dash-toggle-city'] = el => { const k = el.dataset.k; DASH.expC.has(k) ? DASH.expC.delete(k) : DASH.expC.add(k); $('#dash-clinics').innerHTML = clinicsTree(DASH.data).s; };
+function scoreTable(rows, margin) {
+  return html`<div class="tblwrap"><table class="tbl"><tr><th>Name</th><th class="num">Leads</th><th class="num">Test done</th><th class="num">Conversion</th><th class="num">Median report TAT</th><th>Top cancellation reasons</th><th class="num">CSAT</th>${margin ? html`<th class="num">Margin</th>` : ''}</tr>
+    ${rows.map(r => html`<tr><td>${r.name}</td><td class="num">${r.leads}</td><td class="num">${r.testDone}</td><td class="num">${r.conversion === null ? '—' : r.conversion + '%'}</td>
+    <td class="num">${r.medianReportTatH === null ? '—' : r.medianReportTatH + ' h'}</td><td class="small">${r.cancellations.map(c => c.reason + ' (' + c.count + ')').join(', ')}</td>
+    <td class="num">${r.csat === null ? '—' : r.csat + '/5'}</td>${margin ? html`<td class="num">${inr(r.margin)}</td>` : ''}</tr>`)}</table></div>`;
+}
+
+/* ======================= SETTLEMENT (BRD §6.4) ======================= */
+VIEWS.statements = main => settlementView(main, false);
+VIEWS.settlement = main => settlementView(main, true);
+async function settlementView(main, admin) {
+  const b = S.boot;
+  const prevMonth = (() => { const d = new Date(todayStr() + 'T00:00:00Z'); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 7); })();
+  main.innerHTML = html`<h2 style="margin-bottom:10px">${admin ? 'Settlement' : 'Monthly statements'}</h2>
+    ${admin ? html`<div class="grid g2">
+      <form class="card col" id="st-gen"><h3>1 · Generate monthly statement</h3><p class="small muted">Collects every lead that reached Test done in the month. Do this by the 3rd of the next month.</p>
+        <div class="grid g2"><label class="f"><span>Partner</span><select name="partnerId">${(b.partners || []).filter(p => p.state === 'Active').map(p => html`<option value="${p.id}">${p.name}</option>`)}</select></label>
+        <label class="f"><span>Month</span><input type="month" name="month" value="${prevMonth}" max="${todayStr().slice(0, 7)}"></label></div><button class="btn">Generate statement</button></form>
+      <form class="card col" id="st-trf"><h3>3–4 · Record partner transfer</h3><p class="small muted">Applied FIFO to the oldest unpaid statement lines (TDS counts as received).</p>
+        <div class="grid g3"><label class="f"><span>Partner</span><select name="partnerId">${(b.partners || []).filter(p => p.state === 'Active').map(p => html`<option value="${p.id}">${p.name}</option>`)}</select></label>
+        <label class="f"><span>Date</span><input type="date" name="transferDate" value="${todayStr()}" max="${todayStr()}" required></label>
+        <label class="f"><span>Mode</span><select name="paymentMode">${b.consts.TRANSFER_MODES.map(m => html`<option>${m}</option>`)}</select></label>
+        <label class="f"><span>Amount received (₹)</span><input type="number" name="amountRs" step="0.01" min="1" required></label>
+        <label class="f"><span>TDS deducted (₹)</span><input type="number" name="tdsDeductedRs" step="0.01" min="0" value="0"></label>
+        <label class="f"><span>UTR / reference</span><input type="text" name="utr" required></label></div>
+        <label class="f"><span>Notes</span><input type="text" name="notes"></label><button class="btn">Record transfer & allocate</button></form>
+    </div><div class="actions section"><button class="btn btn-ghost" data-act="st-close">5 · Close leads with report + collected commission</button></div>` : ''}
+    <div id="st-list" class="section"><div class="card empty">Loading…</div></div>`.s;
+  if (admin) {
+    $('#st-gen').onsubmit = async e => { e.preventDefault(); try { const r = await api('stmt.generate', formData(e.target)); toast(r.statementId + ': ' + r.added + ' lines added', 'ok'); loadStatements(admin); } catch (err) { fail(err); } };
+    $('#st-trf').onsubmit = async e => {
+      e.preventDefault();
+      try { const r = await api('transfer.record', formData(e.target)); const a = r.allocation;
+        toast('Allocated ' + inr(a.allocated) + ' · ' + a.linesCollected + ' lines collected · credit left ' + inr(a.unallocatedCredit), 'ok'); e.target.reset(); loadStatements(admin); } catch (err) { fail(err); }
+    };
+  }
+  loadStatements(admin);
+}
+ACT['st-close'] = async () => { try { const r = await api('stmt.closeEligible', {}); toast(r.closed + ' lead(s) closed', 'ok'); } catch (e) { fail(e); } };
+async function loadStatements(admin) {
+  try {
+    const r = await api('stmt.list', {});
+    $('#st-list').innerHTML = html`<div class="card"><h3>Statements</h3><div class="tblwrap" style="margin-top:8px"><table class="tbl">
+      <tr><th>Statement</th><th>Partner</th><th>Month</th><th class="num">Leads</th><th class="num">Patient ₹</th><th class="num">Margin earned</th><th class="num">Collected</th><th class="num">Outstanding</th><th>Status</th><th>Due</th></tr>
+      ${r.statements.map(s => html`<tr class="click" data-act="st-open" data-id="${s.StatementID}"><td class="mono">${s.StatementID}</td><td>${s.partnerName}</td><td>${s.MonthYYYYMM}</td>
+        <td class="num">${s.TotalTestDoneLeads}</td><td class="num">${inr(s.PatientCollectedTotalRs)}</td><td class="num">${inr(s.earnedRs)}</td><td class="num">${inr(s.collectedRs)}</td>
+        <td class="num">${inr(s.outstandingRs)}</td><td><span class="chip ${s.Status === 'Collected' ? 'good' : s.flagged ? 'bad' : 'info'}">${s.Status}</span>${s.flagged ? html` <span class="chip bad">${s.flagged} flagged</span>` : ''}</td>
+        <td class="small">${s.dueBy}${s.overdueDays ? html`<br><span style="color:var(--bad)">${s.overdueDays}d overdue · interest ≈ ${inr(s.lateInterestRs)}</span>` : ''}</td></tr>`)}</table></div></div>
+      ${admin && r.transfers.length ? html`<div class="card section"><h3>Transfers</h3><div class="tblwrap" style="margin-top:8px"><table class="tbl"><tr><th>ID</th><th>Partner</th><th>Date</th><th>UTR</th><th class="num">Amount</th><th class="num">TDS</th><th class="num">Allocated</th><th class="num">Unallocated</th></tr>
+        ${r.transfers.map(t => html`<tr><td class="mono">${t.TransferID}</td><td>${t.PartnerID}</td><td>${t.TransferDate}</td><td class="mono">${t.UTR}</td><td class="num">${inr(t.AmountRs)}</td><td class="num">${inr(t.TDSDeductedRs)}</td><td class="num">${inr(t.AllocatedAmountRs)}</td><td class="num">${inr(t.UnallocatedAmountRs)}</td></tr>`)}</table></div></div>` : ''}`.s;
+  } catch (e) { fail(e); }
+}
+ACT['st-open'] = async el => {
+  const admin = S.boot.user.role === 'Admin';
+  try {
+    const r = await api('stmt.lines', { statementId: el.dataset.id });
+    const s = r.statement, canFlag = admin || todayStr() <= r.reviewDeadline;
+    openModal(s.StatementID, html`<div class="row between"><span>${s.MonthYYYYMM} · <span class="chip">${s.Status}</span>${s.ConfirmedAt ? ' · confirmed ' + fdate(s.ConfirmedAt) : ''}</span>
+      <span class="small muted">Partner review window: until ${fdate(r.reviewDeadline)}</span></div>
+      ${!s.ConfirmedAt ? html`<div class="actions" style="margin:10px 0"><button class="btn btn-sm" data-act="st-confirm" data-id="${s.StatementID}">Confirm statement</button></div>` : ''}
+      <div class="tblwrap"><table class="tbl"><tr><th>Lead</th><th>Clinic</th><th>Test done</th><th>Tests</th><th class="num">Patient ₹</th><th class="num">Margin</th><th class="num">Paid</th><th>Line</th><th></th></tr>
+      ${r.lines.map(l => html`<tr><td class="mono">${l.LeadID}<br><span class="small muted">${l.leadStatus}</span></td><td>${l.clinic}</td><td>${l.TestDoneDate}</td><td class="small">${l.TestsSummary}</td>
+        <td class="num">${inr(l.PatientPriceRs)}</td><td class="num">${inr(l.ContractualMarginRs)}</td><td class="num">${inr(l.allocatedRs)}</td>
+        <td><span class="chip ${l.LineStatus === 'Collected' ? 'good' : l.LineStatus === 'Flagged' || l.LineStatus === 'Disputed' ? 'bad' : ''}">${l.LineStatus}</span>${l.FlagNote ? html`<br><span class="small">${l.FlagNote}</span>` : ''}</td>
+        <td>${l.LineStatus === 'Flagged' && admin ? html`<button class="btn btn-sm" data-act="st-resolve" data-id="${l.StatementLineID}">Resolve</button>`
+          : canFlag && ['Collected', 'Void', 'Flagged', 'Disputed'].indexOf(l.LineStatus) < 0 ? html`<button class="btn btn-sm btn-ghost" data-act="st-flag" data-id="${l.StatementLineID}">Flag</button>` : ''}</td></tr>`)}</table></div>`, { wide: true });
+  } catch (e) { fail(e); }
+};
+ACT['st-confirm'] = async el => { try { await api('stmt.confirm', { statementId: el.dataset.id }); toast('Statement confirmed', 'ok'); closeModal(); loadStatements(S.boot.user.role === 'Admin'); } catch (e) { fail(e); } };
+ACT['st-flag'] = el => promptNote('Flag this line', 'What is the discrepancy?', async note => { await api('stmt.flagLine', { statementLineId: el.dataset.id, note }); toast('Line flagged — the lead is now Disputed', 'ok'); closeModal(); loadStatements(S.boot.user.role === 'Admin'); });
+ACT['st-resolve'] = el => {
+  const b = openModal('Resolve flagged line', html`<form class="col" id="rs"><label class="f"><span>Resolution</span><select name="resolution"><option value="valid">Valid — keep on statement (lead back to Test done)</option><option value="void">Void — remove (lead cancelled)</option></select></label>
+    <label class="f"><span class="req">Note</span><textarea name="note" required></textarea></label><button class="btn">Save</button></form>`);
+  $('#rs', b).onsubmit = async e => { e.preventDefault(); try { await api('stmt.resolveLine', Object.assign(formData(e.target), { statementLineId: el.dataset.id })); toast('Resolved', 'ok'); closeModal(); loadStatements(true); } catch (err) { fail(err); } };
+};
+function promptNote(title, label, fn, required) {
+  const b = openModal(title, html`<form class="col" id="pn"><label class="f"><span class="req">${label}</span><textarea name="note" required></textarea></label><div class="actions"><button class="btn">Save</button></div></form>`);
+  $('#pn', b).onsubmit = async e => { e.preventDefault(); try { await fn(formData(e.target).note); } catch (err) { fail(err); } };
+}
+
+/* ======================= USERS (BRD §2, §11.4) ======================= */
+VIEWS.users = async main => {
+  main.innerHTML = html`<div class="row between" style="margin-bottom:10px"><h2>Users & access</h2><div class="row"><input type="search" id="u-q" placeholder="Search users" style="width:220px"><button class="btn" data-act="u-edit">Add user</button></div></div>
+    <div class="card" style="padding:0" id="u-list"><div class="empty">Loading…</div></div>`.s;
+  S.cache.users = await api('users.list', {});
+  $('#u-q').oninput = renderUsers;
+  renderUsers();
+};
+function renderUsers() {
+  const q = ($('#u-q').value || '').toLowerCase();
+  const rows = S.cache.users.filter(u => !q || [u.Name, u.Email, u.Role, u.orgName].some(v => String(v).toLowerCase().indexOf(q) >= 0));
+  $('#u-list').innerHTML = html`<div class="tblwrap" style="border:0"><table class="tbl"><tr><th>User</th><th>Role</th><th>Organisation</th><th>Scope</th><th>Status</th><th></th></tr>
+    ${rows.map(u => html`<tr><td><b>${u.Name}</b><br><span class="small muted">${u.Email} · ${u.Mobile}</span></td><td>${u.Role}</td><td>${u.orgName}</td><td class="small">${u.ScopeType}: ${u.ScopeIDs}</td>
+      <td>${u.Active ? html`<span class="chip good">Active</span>` : html`<span class="chip">Inactive</span>`}${u.locked ? html` <span class="chip bad">Locked</span>` : ''}${u.ForcePasswordChange ? html` <span class="chip warn">${u.hasPassword ? 'Temp password' : 'No password yet'}</span>` : ''}</td>
+      <td class="row" style="gap:4px"><button class="btn btn-sm btn-ghost" data-act="u-edit" data-id="${u.UserID}">Edit</button>
+        ${u.Active ? html`<button class="btn btn-sm btn-ghost" data-act="u-temp" data-id="${u.UserID}">Send temp password</button>` : ''}
+        ${u.locked ? html`<button class="btn btn-sm btn-ghost" data-act="u-unlock" data-id="${u.UserID}">Unlock</button>` : ''}
+        <button class="btn btn-sm btn-ghost" data-act="u-active" data-id="${u.UserID}" data-on="${u.Active ? '0' : '1'}">${u.Active ? 'Deactivate' : 'Activate'}</button></td></tr>`)}</table></div>`.s;
+}
+ACT['u-edit'] = el => {
+  const u = S.cache.users.find(x => x.UserID === el.dataset.id) || { Role: 'Clinic Manager', ScopeType: 'CLINIC' };
+  const b = S.boot;
+  const body = openModal(u.UserID ? 'Edit ' + u.Name : 'Add user', html`<form class="col" id="uf"><input type="hidden" name="UserID" value="${u.UserID || ''}">
+    <div class="grid g2"><label class="f"><span class="req">Name</span><input type="text" name="Name" required value="${u.Name || ''}"></label>
+    <label class="f"><span class="req">Email (login ID)</span><input type="email" name="Email" required value="${u.Email || ''}"></label>
+    <label class="f"><span class="req">Mobile</span><input type="tel" name="Mobile" required value="${u.Mobile || ''}"></label>
+    <label class="f"><span class="req">Role</span><select name="Role" id="uf-role">${['Admin', 'Clinic Manager', 'Partner Coordinator', 'Lab User'].map(r => html`<option ${u.Role === r ? raw('selected') : ''}>${r}</option>`)}</select></label></div>
+    <div id="uf-org"></div>
+    <label class="f"><span>Notes</span><input type="text" name="Notes" value="${u.Notes || ''}"></label>
+    ${u.UserID ? '' : html`<label class="check"><input type="checkbox" name="sendTempPassword" checked> Email a temporary password now</label>`}
+    <p class="small muted">One email = one role and one scope. Scope changes apply on the user's next request and are audit-logged.</p>
+    <div class="actions"><button class="btn">Save</button></div></form>`);
+  const renderOrg = () => {
+    const role = $('#uf-role').value;
+    const ids = String(u.ScopeIDs || '').split(',').filter(Boolean);
+    let h = '';
+    if (role === 'Clinic Manager') h = html`<div class="grid g2"><label class="f"><span class="req">Clinic</span><select name="OrgID">${b.clinics.map(c => html`<option value="${c.id}" ${u.OrgID === c.id ? raw('selected') : ''}>${c.name}</option>`)}</select></label>
+      <label class="f"><span>Backup clinics (optional)</span><select name="ScopeIDs" multiple size="4">${b.clinics.map(c => html`<option value="${c.id}" ${ids.indexOf(c.id) >= 0 && c.id !== u.OrgID ? raw('selected') : ''}>${c.name}</option>`)}</select></label></div>`;
+    else if (role === 'Partner Coordinator') h = html`<div class="grid g3"><label class="f"><span class="req">Partner</span><select name="OrgID">${(b.partners || []).map(p => html`<option value="${p.id}" ${u.OrgID === p.id ? raw('selected') : ''}>${p.name} (${p.state})</option>`)}</select></label>
+      <label class="f"><span class="req">Scope type</span><select name="ScopeType" id="uf-st">${['REGION', 'AREA', 'CLINIC'].map(s => html`<option ${u.ScopeType === s ? raw('selected') : ''}>${s}</option>`)}</select></label>
+      <label class="f"><span class="req">Scope</span><select name="ScopeIDs" multiple size="5" id="uf-ids"></select></label></div>`;
+    else if (role === 'Lab User') h = html`<label class="f"><span class="req">Lab</span><select name="OrgID">${(b.labs || []).filter(l => l.state !== 'Rejected').map(l => html`<option value="${l.id}" ${u.OrgID === l.id ? raw('selected') : ''}>${l.name} · ${l.partnerId} · ${l.clinicId} (${l.state})</option>`)}</select></label>`;
+    else h = html`<p class="small muted">Admins see the whole network.</p>`;
+    $('#uf-org').innerHTML = h.s;
+    const fillIds = () => {
+      const st = $('#uf-st').value;
+      const opts = st === 'REGION' ? b.regions : st === 'AREA' ? b.areas : b.clinics;
+      $('#uf-ids').innerHTML = opts.map(o => html`<option value="${o.id}" ${ids.indexOf(o.id) >= 0 ? raw('selected') : ''}>${o.name}</option>`.s).join('');
+    };
+    if ($('#uf-st')) { $('#uf-st').onchange = fillIds; fillIds(); }
+  };
+  $('#uf-role').onchange = renderOrg; renderOrg();
+  $('#uf', body).onsubmit = async e => {
+    e.preventDefault();
+    const f = formData(e.target);
+    const scopeIds = $$('select[name=ScopeIDs] option:checked', e.target).map(o => o.value).join(',');
+    const user = { UserID: f.UserID, Name: f.Name, Email: f.Email, Mobile: f.Mobile, Role: f.Role, OrgID: f.OrgID || '', ScopeType: f.ScopeType || '', ScopeIDs: scopeIds, Notes: f.Notes };
+    try {
+      const r = await api('users.save', { user: user, sendTempPassword: !!f.sendTempPassword });
+      toast('Saved ' + r.userId, 'ok');
+      if (r.temp) showTemp(user.Name, user.Email, r.temp); else closeModal();
+      S.cache.users = await api('users.list', {}, { silent: true }); if ($('#u-list')) renderUsers();
+    } catch (err) { fail(err); }
+  };
+};
+function showTemp(name, email, t) {
+  const msg = 'Hello ' + name + ', your Gynoveda DCP login: ' + (t.appUrl || '') + ' · ID: ' + email + ' · Temporary password: ' + t.tempPassword + ' (expires ' + t.expires + ' IST). You will set your own password at first sign-in.';
+  openModal('Temporary password', html`<div class="alert ok">Shown once. ${t.emailed ? 'Also emailed to ' + email + '.' : 'Email could not be sent — share it below.'}</div>
+    <p style="font-size:22px;font-weight:700;letter-spacing:.06em" class="mono">${t.tempPassword}</p><p class="small muted">Expires ${t.expires} IST.</p>
+    <div class="actions"><button class="btn" data-act="copy" data-text="${msg}">Copy login message</button>
+    <a class="btn btn-wa" href="https:\/\/wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Share on WhatsApp</a></div>`);
+}
+ACT['copy'] = el => copyText(el.dataset.text);
+ACT['u-temp'] = async el => {
+  const u = S.cache.users.find(x => x.UserID === el.dataset.id);
+  if (!(await confirmBox('Issue a new temporary password for ' + u.Name + '? Their current password stops working.', 'Issue password'))) return;
+  try { showTemp(u.Name, u.Email, await api('users.sendTemp', { userId: u.UserID })); S.cache.users = await api('users.list', {}, { silent: true }); } catch (e) { fail(e); }
+};
+ACT['u-unlock'] = async el => { try { await api('users.unlock', { userId: el.dataset.id }); toast('Unlocked', 'ok'); go('users'); } catch (e) { fail(e); } };
+ACT['u-active'] = async el => { try { await api('users.setActive', { userId: el.dataset.id, active: el.dataset.on === '1' }); toast('Updated', 'ok'); go('users'); } catch (e) { fail(e); } };
+
+/* ======================= PARTNERS & LABS (BRD §12) ======================= */
+VIEWS.partners = async main => {
+  main.innerHTML = html`<h2 style="margin-bottom:10px">Partners, labs & rate cards</h2><div id="p-list"><div class="card empty">Loading…</div></div>`.s;
+  const r = await api('md.list', { table: 'Partners' });
+  $('#p-list').innerHTML = r.rows.map(p => html`<div class="card"><div class="row between"><div><h3>${p.DisplayName} <span class="chip ${p.State === 'Active' ? 'good' : p.State === 'Suspended' ? 'bad' : 'warn'}">${p.State}</span></h3>
+    <div class="small muted">${p.LegalName} · ${p.Type} · Agreement ${p.AgreementRef} (${p.AgreementDate})</div><div class="small">${p.CommissionRule}</div></div>
+    <div class="actions"><button class="btn btn-sm" data-act="p-validate" data-id="${p.PartnerID}">${p.State === 'Active' ? 'Validate' : 'Validate & Activate'}</button>
+      <button class="btn btn-sm btn-ghost" data-act="p-labs" data-id="${p.PartnerID}">Labs</button><button class="btn btn-sm btn-ghost" data-act="p-rc" data-id="${p.PartnerID}">Rate card</button>
+      ${p.State === 'Active' ? html`<button class="btn btn-sm btn-danger" data-act="p-state" data-id="${p.PartnerID}" data-state="Suspended">Suspend</button>` : ''}
+      ${p.State === 'Draft' ? html`<button class="btn btn-sm btn-ghost" data-act="p-state" data-id="${p.PartnerID}" data-state="Draft">Reject with reason</button>` : ''}</div></div></div>`).map(x => x.s).join('');
+};
+ACT['p-validate'] = async el => {
+  try {
+    const v = await api('partner.validate', { partnerId: el.dataset.id });
+    const labWarn = v.labs.filter(l => l.warnings.length).length;
+    const b = openModal('Validation · ' + v.name, html`
+      <div class="row"><span class="chip ${v.errors.length ? 'bad' : 'good'}">${v.errors.length} blocking error(s)</span><span class="chip ${v.warnings.length ? 'warn' : 'good'}">${v.warnings.length} warning(s)</span>
+        <span class="chip">${v.labsOk} labs valid · ${v.labsWithErrors} with errors · ${labWarn} with warnings</span><span class="chip">${v.rateLines} rate lines</span></div>
+      ${v.errors.length ? html`<div class="alert err section"><b>Blocking errors</b>${v.errors.slice(0, 40).map(e => html`<br>· ${e}`)}${v.errors.length > 40 ? html`<br>… ${v.errors.length - 40} more` : ''}</div>` : ''}
+      ${v.warnings.length ? html`<div class="alert warn section"><b>Warnings (need a sign-off note)</b>${v.warnings.slice(0, 30).map(e => html`<br>· ${e}`)}</div>` : ''}
+      <details class="section"><summary>Lab results (${v.labs.length})</summary><div class="tblwrap" style="margin-top:6px"><table class="tbl"><tr><th>Lab</th><th>State</th><th>Errors</th><th>Warnings</th></tr>
+        ${v.labs.map(l => html`<tr><td>${l.labId} · ${l.name}</td><td>${l.state}</td><td class="small" style="color:var(--bad)">${l.errors.join('; ')}</td><td class="small">${l.warnings.join('; ')}</td></tr>`)}</table></div></details>
+      ${v.state !== 'Active' ? html`<form class="panel section col" id="pa"><h3>Manual verification checklist</h3>
+        <label class="check"><input type="checkbox" name="agreement"> Signed agreement on file</label><label class="check"><input type="checkbox" name="ratecard"> Rate card verified against the agreement</label>
+        <label class="check"><input type="checkbox" name="nabl"> NABL certificate verified</label><label class="check"><input type="checkbox" name="testcall"> Test call completed to coordinator / lab</label>
+        <label class="f"><span>Admin sign-off note${v.warnings.length || labWarn ? ' (required — warnings present)' : ''}</span><input type="text" name="note"></label>
+        <button class="btn" ${v.errors.length ? raw('disabled') : ''}>Activate partner, valid labs & Draft rate card</button></form>` : ''}`, { wide: true });
+    if ($('#pa', b)) $('#pa', b).onsubmit = async e => {
+      e.preventDefault(); const f = formData(e.target);
+      try { const r = await api('partner.activate', { partnerId: v.partnerId, checklist: { agreement: f.agreement, ratecard: f.ratecard, nabl: f.nabl, testcall: f.testcall }, note: f.note });
+        toast('Activated · ' + r.labsActivated + ' labs · ' + r.rateLinesActivated + ' rate lines', 'ok'); closeModal(); go('partners'); } catch (err) { fail(err); }
+    };
+  } catch (e) { fail(e); }
+};
+ACT['p-state'] = el => promptNote(el.dataset.state === 'Suspended' ? 'Suspend partner' : 'Reject partner', 'Reason', async note => {
+  const r = await api('partner.setState', { partnerId: el.dataset.id, state: el.dataset.state, note });
+  toast('Updated' + (r.clinicsBlocked.length ? ' · new leads blocked at ' + r.clinicsBlocked.join(', ') : ''), 'ok'); closeModal(); go('partners');
+});
+ACT['p-labs'] = async el => {
+  const r = await api('md.list', { table: 'Labs', partnerId: el.dataset.id, page: 0 });
+  const all = [r.rows];
+  for (let p = 1; p * r.pageSize < r.total; p++) all.push((await api('md.list', { table: 'Labs', partnerId: el.dataset.id, page: p }, { silent: true })).rows);
+  const labs = [].concat.apply([], all);
+  const b = openModal('Labs · ' + el.dataset.id + ' (' + labs.length + ')', html`<p class="small muted">Tick Draft labs and activate them in bulk. Each lab is validated; labs with errors are skipped with the reason.</p>
+    <div class="row" style="margin-bottom:8px"><input type="search" id="lb-q" placeholder="Filter by clinic, area, name" class="grow"><select id="lb-st" style="width:140px"><option value="">All states</option><option>Draft</option><option>Active</option><option>Suspended</option></select>
+    <button class="btn btn-sm btn-ghost" data-act="lb-all">Tick all shown Draft</button></div>
+    <div class="tblwrap" style="max-height:55vh"><table class="tbl" id="lb-t"></table></div>
+    <div class="sticky-actions row"><input type="text" id="lb-note" placeholder="Sign-off note (needed if NABL is blank)" class="grow"><button class="btn" data-act="lb-activate">Activate ticked labs</button></div>`, { wide: true });
+  const draw = () => {
+    const q = $('#lb-q').value.toLowerCase(), st = $('#lb-st').value;
+    $('#lb-t').innerHTML = html`<tr><th></th><th>Lab</th><th>Clinic served</th><th>Pincode</th><th>Modes</th><th>Tests</th><th>NABL</th><th>State</th><th></th></tr>
+      ${labs.filter(l => (!st || l.State === st) && (!q || [l.LabName, l.ClinicIDServed, l.AreaName, l.Pincode].some(v => String(v).toLowerCase().indexOf(q) >= 0))).map(l => html`<tr>
+      <td>${l.State === 'Draft' ? html`<input type="checkbox" class="lb-cb" value="${l.LabID}">` : ''}</td><td><b>${l.LabName}</b><br><span class="small muted">${l.LabID} · ${l.Address}</span></td>
+      <td>${l.ClinicIDServed}</td><td>${l.Pincode}</td><td>${l.Modes}</td><td class="small">${l.TestsPerformed}</td><td class="small">${l.NABLCertNumber || html`<span class="chip warn">blank</span>`}</td>
+      <td><span class="chip ${l.State === 'Active' ? 'good' : l.State === 'Suspended' ? 'bad' : 'warn'}">${l.State}</span></td>
+      <td>${l.State === 'Active' ? html`<button class="btn btn-sm btn-ghost" data-act="lb-susp" data-id="${l.LabID}">Suspend</button>` : ''}</td></tr>`)}`.s;
+  };
+  $('#lb-q', b).oninput = draw; $('#lb-st', b).onchange = draw; draw();
+};
+ACT['lb-all'] = () => $$('.lb-cb').forEach(c => { c.checked = true; });
+ACT['lb-activate'] = async () => {
+  const ids = $$('.lb-cb:checked').map(c => c.value);
+  try { const r = await api('labs.activate', { labIds: ids, note: $('#lb-note').value });
+    openModal('Lab activation', html`<div class="alert ok">${r.activated.length} lab(s) activated.</div>${r.skipped.length ? html`<div class="alert warn section"><b>Skipped</b>${r.skipped.map(s => html`<br>· ${s.labId}: ${s.why}`)}</div>` : ''}`);
+    S.boot = await api('boot', {}, { silent: true });
+  } catch (e) { fail(e); }
+};
+ACT['lb-susp'] = el => promptNote('Suspend lab ' + el.dataset.id, 'Reason', async note => { await api('lab.setState', { labId: el.dataset.id, state: 'Suspended', note }); toast('Lab suspended', 'ok'); closeModal(); });
+ACT['p-rc'] = async el => {
+  const pid = el.dataset.id;
+  const r = await api('md.list', { table: 'RateCards', partnerId: pid });
+  const rows = r.rows;
+  const b = openModal('Rate card · ' + pid, html`<p class="small muted">Active prices are frozen. Commercial changes go into a new version with an EffectiveFrom date; leads keep the prices frozen at capture.</p>
+    <div class="tblwrap" style="max-height:50vh"><table class="tbl"><tr><th></th><th>Item</th><th>Version</th><th class="num">MRP</th><th class="num">Patient</th><th class="num">Margin</th><th class="num">%MRP</th><th class="num">TAT h</th><th>Home</th><th>Clinic-visible</th><th>From</th><th>State</th></tr>
+    ${rows.map(x => html`<tr><td>${x.State !== 'Active' ? html`<input type="checkbox" class="rc-cb" value="${x.RateCardID}">` : ''}</td><td><b>${x.ItemName}</b><br><span class="small muted">${x.ItemCode} · ${x.ItemType}</span></td><td>${x.Version}</td>
+      <td class="num">${inr(x.MRP)}</td><td class="num">${inr(x.PatientPrice)}</td><td class="num">${inr(x.GynovedaMarginRs)}</td><td class="num">${Math.round(Number(x.MarginPctOfMRP) * 1000) / 10}%</td><td class="num">${x.TATHours}</td>
+      <td>${x.HomeCollectionAllowed ? 'Yes' : 'No'}</td><td>${x.VisibleToClinics ? 'Yes' : 'No'}</td><td>${x.EffectiveFrom}</td><td><span class="chip ${x.State === 'Active' ? 'good' : 'warn'}">${x.State}</span></td></tr>`)}</table></div>
+    <div class="grid g2 section"><div class="panel col"><h3>Activate ticked staged items</h3><input type="text" id="rc-note" placeholder="Commercial sign-off note"><button class="btn" data-act="rc-items">Activate & show to clinics</button></div>
+      <form class="panel col" id="rc-ver"><h3>New version</h3><div class="grid g2"><input type="text" name="version" placeholder="v2.0" required><input type="date" name="effectiveFrom" min="${todayStr()}" required></div>
+      <input type="text" name="note" placeholder="Reason"><div class="row"><button class="btn">Create Draft copy</button><button type="button" class="btn btn-ghost" data-act="rc-activate-ver">Activate a Draft version…</button></div>
+      <p class="small muted">Edit Draft lines in Master data → RateCards, then activate the version.</p></form></div>`, { wide: true });
+  b.dataset.pid = pid;
+  $('#rc-ver', b).onsubmit = async e => { e.preventDefault(); try { const x = await api('rc.newVersion', Object.assign(formData(e.target), { partnerId: pid })); toast(x.version + ' created with ' + x.lines + ' Draft lines', 'ok'); closeModal(); } catch (err) { fail(err); } };
+};
+ACT['rc-items'] = async () => {
+  const ids = $$('.rc-cb:checked').map(c => c.value);
+  try { const r = await api('rc.activateItems', { rateCardIds: ids, note: $('#rc-note').value });
+    openModal('Rate card', html`<div class="alert ok">${r.activated.length} item(s) activated.</div>${r.skipped.length ? html`<div class="alert warn">${r.skipped.map(s => html`${s.id}: ${s.why}<br>`)}</div>` : ''}`);
+    S.boot = await api('boot', {}, { silent: true }); } catch (e) { fail(e); }
+};
+ACT['rc-activate-ver'] = () => {
+  const pid = $('#modal-body').dataset.pid;
+  const b = openModal('Activate rate-card version', html`<form class="col" id="av"><label class="f"><span>Version</span><input type="text" name="version" placeholder="v2.0" required></label><label class="f"><span>Sign-off note</span><input type="text" name="note"></label><button class="btn">Activate</button></form>`);
+  $('#av', b).onsubmit = async e => { e.preventDefault(); try { const r = await api('rc.activateVersion', Object.assign(formData(e.target), { partnerId: pid })); toast(r.activated + ' lines active from ' + r.effectiveFrom, 'ok'); closeModal(); } catch (err) { fail(err); } };
+};
+
+/* ======================= MASTER DATA ======================= */
+VIEWS.masterdata = async main => {
+  const tables = S.boot.mdTables || [];
+  S.cache.md = { table: load('dcp_md') || 'Clinics', page: 0, q: '' };
+  main.innerHTML = html`<div class="row between" style="margin-bottom:10px"><h2>Master data</h2>
+    <div class="row"><select id="md-t" style="width:180px">${tables.map(t => html`<option ${t === S.cache.md.table ? raw('selected') : ''}>${t}</option>`)}</select>
+    <input type="search" id="md-q" placeholder="Search" style="width:220px"><button class="btn" data-act="md-edit">Add row</button><button class="btn btn-ghost" data-act="md-export">Export CSV</button></div></div>
+    <div id="md-body" class="card" style="padding:0"><div class="empty">Loading…</div></div>`.s;
+  $('#md-t').onchange = () => { S.cache.md.table = $('#md-t').value; S.cache.md.page = 0; store('dcp_md', S.cache.md.table); loadMd(); };
+  let tmr; $('#md-q').oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => { S.cache.md.q = $('#md-q').value; S.cache.md.page = 0; loadMd(); }, 300); };
+  await loadMd();
+};
+async function loadMd() {
+  const m = S.cache.md;
+  const r = await api('md.list', { table: m.table, q: m.q, page: m.page });
+  m.data = r;
+  const cols = r.headers.slice(0, 9);
+  $('#md-body').innerHTML = html`<div class="tblwrap" style="border:0"><table class="tbl"><tr>${cols.map(h => html`<th>${h}</th>`)}<th></th></tr>
+    ${r.rows.map((row, i) => html`<tr class="click" data-act="md-edit" data-i="${i}">${cols.map(h => html`<td class="small">${typeof row[h] === 'boolean' ? (row[h] ? '✓' : '—') : String(row[h] === undefined ? '' : row[h]).slice(0, 60)}</td>`)}<td><button class="btn-link small">Edit</button></td></tr>`)}</table></div>
+    <div class="row between" style="padding:10px"><span class="small muted">${r.total} rows · page ${r.page + 1} of ${Math.max(1, Math.ceil(r.total / r.pageSize))}</span>
+    <div class="row"><button class="btn btn-sm btn-ghost" data-act="md-page" data-d="-1" ${r.page ? '' : raw('disabled')}>Prev</button><button class="btn btn-sm btn-ghost" data-act="md-page" data-d="1" ${(r.page + 1) * r.pageSize < r.total ? '' : raw('disabled')}>Next</button></div></div>`.s;
+}
+ACT['md-page'] = el => { S.cache.md.page += Number(el.dataset.d); loadMd(); };
+ACT['md-export'] = async () => { try { const r = await api('export.table', { table: S.cache.md.table }); downloadText(r.fileName, r.csv); } catch (e) { fail(e); } };
+ACT['md-edit'] = el => {
+  const m = S.cache.md, r = m.data, isNew = el.dataset.i === undefined;
+  const row = isNew ? {} : r.rows[Number(el.dataset.i)];
+  const body = openModal((isNew ? 'Add ' : 'Edit ') + m.table + (isNew ? '' : ' · ' + row[r.key]), html`<form class="col" id="mdf"><div class="grid g2">
+    ${r.headers.map(h => typeof row[h] === 'boolean' || ['Active', 'PilotScope', 'MaleOnly', 'HomeCollectionAllowed', 'VisibleToClinics', 'IncludesScans', 'ActiveInPilot'].indexOf(h) >= 0
+      ? html`<label class="check"><input type="checkbox" name="${h}" ${row[h] === true ? raw('checked') : ''}> ${h}</label>`
+      : String(row[h] || '').length > 60 || ['Address', 'BodyText', 'Notes', 'CommissionRule', 'PreparationNotes', 'Description', 'ReferringDoctors'].indexOf(h) >= 0
+        ? html`<label class="f" style="grid-column:1/-1"><span>${h}</span><textarea name="${h}">${row[h] === undefined ? '' : row[h]}</textarea></label>`
+        : html`<label class="f"><span>${h}${h === r.key ? ' (key)' : ''}</span><input type="text" name="${h}" value="${row[h] === undefined ? '' : row[h]}" ${h === r.key && !isNew ? raw('readonly') : ''}></label>`)}</div>
+    <label class="f"><span>Change note (audit)</span><input type="text" name="__note"></label><div class="actions"><button class="btn">Save</button></div></form>`, { wide: true });
+  $('#mdf', body).onsubmit = async e => {
+    e.preventDefault();
+    const f = formData(e.target), note = f.__note; delete f.__note;
+    try { await api('md.save', { table: m.table, row: f, isNew: isNew, note: note }); toast('Saved', 'ok'); closeModal(); loadMd(); if (['Clinics', 'RateCards', 'Partners', 'Labs', 'Config'].indexOf(m.table) >= 0) S.boot = await api('boot', {}, { silent: true }); } catch (err) { fail(err); }
+  };
+};
+
+/* ======================= DUPLICATES ======================= */
+VIEWS.duplicates = async main => {
+  main.innerHTML = html`<h2 style="margin-bottom:6px">Duplicate review</h2><p class="small muted">Same mobile + overlapping test within ${S.boot.cfg.DUPLICATE_WINDOW_DAYS} days. The first capture keeps the credit.</p><div id="dp" class="card" style="padding:0"><div class="empty">Loading…</div></div>`.s;
+  const rows = await api('dup.list', {});
+  $('#dp').innerHTML = html`<div class="tblwrap" style="border:0"><table class="tbl"><tr><th>Review</th><th>Patient</th><th>Primary (keeps credit)</th><th>Duplicate</th><th>Overlap</th><th class="num">Days</th><th>Status</th><th></th></tr>
+    ${rows.map(d => html`<tr><td class="mono">${d.ReviewID}<br><span class="small muted">${fdate(d.DetectedAt)}</span></td><td>${d.PatientName}<br><span class="small muted">${d.Phone}</span></td>
+      <td><button class="btn-link mono" data-act="open-lead" data-id="${d.PrimaryLeadID}">${d.PrimaryLeadID}</button><br><span class="small muted">${d.clinic1Name} · ${d.primaryStatus}</span></td>
+      <td><button class="btn-link mono" data-act="open-lead" data-id="${d.DuplicateLeadID}">${d.DuplicateLeadID}</button><br><span class="small muted">${d.clinic2Name} · ${d.duplicateStatus}</span></td>
+      <td class="small">${d.OverlappingTests}</td><td class="num">${d.DaysApart}</td><td><span class="chip ${/Pending/.test(d.ResolutionStatus) ? 'warn' : 'good'}">${d.ResolutionStatus}</span>${d.ResolvedBy ? html`<br><span class="small muted">${d.ResolvedBy}</span>` : ''}</td>
+      <td>${/Pending/.test(d.ResolutionStatus) ? html`<div class="col"><button class="btn btn-sm" data-act="dp-res" data-id="${d.ReviewID}" data-a="cancel">Cancel duplicate</button><button class="btn btn-sm btn-ghost" data-act="dp-res" data-id="${d.ReviewID}" data-a="keep">Not a duplicate</button></div>` : ''}</td></tr>`)}</table></div>`.s;
+};
+ACT['dp-res'] = el => promptNote(el.dataset.a === 'cancel' ? 'Cancel the duplicate lead' : 'Mark as not a duplicate', 'Resolution note', async note => { await api('dup.resolve', { reviewId: el.dataset.id, action: el.dataset.a, note }); toast('Resolved', 'ok'); closeModal(); go('duplicates'); });
+
+/* ======================= DISPUTES ======================= */
+VIEWS.disputes = async main => {
+  main.innerHTML = html`<h2 style="margin-bottom:10px">Disputes</h2><div id="ds"><div class="card empty">Loading…</div></div>`.s;
+  const r = await api('dispute.list', {});
+  const card = (title, rows, kind) => html`<div class="card section"><h3>${title} · ${rows.length}</h3>${rows.length ? html`<div class="tblwrap" style="margin-top:8px"><table class="tbl"><tr><th>Lead</th><th>Clinic</th><th>Status</th><th>Detail</th><th></th></tr>
+    ${rows.map(x => html`<tr><td><button class="btn-link mono" data-act="open-lead" data-id="${x.leadId}">${x.leadId}</button></td><td>${x.clinic}</td><td>${x.status || x.statementId}</td><td class="small">${x.note || ''}${x.by ? html`<br><span class="muted">${x.by} · ${fdate(x.since)}</span>` : x.since ? html`<span class="muted">since ${fdate(x.since)}</span>` : ''}</td>
+    <td>${kind === 'flag' ? html`<button class="btn btn-sm btn-ghost" data-act="ds-dismiss" data-id="${x.leadId}">Dismiss</button>` : ''}</td></tr>`)}</table></div>` : html`<p class="muted small">None.</p>`}</div>`;
+  $('#ds').innerHTML = html`${card('Disputed leads (revenue frozen)', r.disputed, 'lead')}${card('Flags from clinics / partners', r.flags, 'flag')}${card('Flagged statement lines (resolve in Settlement)', r.statementFlags, 'stmt')}`.s;
+};
+ACT['ds-dismiss'] = el => promptNote('Dismiss flag', 'Why is no dispute needed?', async note => { await api('dispute.dismiss', { leadId: el.dataset.id, note }); toast('Dismissed', 'ok'); closeModal(); go('disputes'); });
+
+/* ======================= AUDIT ======================= */
+VIEWS.audit = main => {
+  main.innerHTML = html`<h2 style="margin-bottom:10px">Audit log</h2><form class="card grid g4" id="au"><label class="f"><span>Lead ID</span><input type="text" name="leadId"></label>
+    <label class="f"><span>Action</span><input type="text" name="action" placeholder="e.g. STATUS_CHANGE, REPORT_VIEWED"></label><label class="f"><span>Text</span><input type="text" name="q" placeholder="email, note, ref"></label>
+    <div class="row" style="align-self:end"><button class="btn">Search</button><button class="btn btn-ghost" type="button" data-act="au-export">Export</button>
+    <a class="btn btn-ghost" id="au-sheet" href="#" target="_blank" rel="noopener" style="display:none">Open in Sheet ↗</a></div></form><div id="au-r" class="section"></div>`.s;
+  const runA = async () => {
+    try { const r = await api('audit.list', Object.assign(formData($('#au')), { limit: 500 }));
+      if (r.sheetUrl) { const a = $('#au-sheet'); a.href = r.sheetUrl; a.style.display = ''; }
+      $('#au-r').innerHTML = html`<div class="tblwrap"><table class="tbl"><tr><th>When</th><th>Who</th><th>Action</th><th>Lead</th><th>Ref</th><th>Note / change</th></tr>
+        ${r.rows.map(a => html`<tr><td class="small mono">${a.AuditID}<br>${a.Timestamp}</td><td class="small">${a.UserEmail}<br><span class="muted">${a.Role}</span></td><td class="small"><b>${a.Action}</b></td><td class="mono small">${a.LeadID}</td><td class="small">${a.Entity} ${a.EntityRef}</td>
+        <td class="small">${a.Note}${a.BeforeJSON || a.AfterJSON ? html`<details><summary>JSON</summary><pre class="json">${a.BeforeJSON}\n→ ${a.AfterJSON}</pre></details>` : ''}</td></tr>`)}</table></div>`.s; } catch (e) { fail(e); }
+  };
+  $('#au').onsubmit = e => { e.preventDefault(); runA(); };
+  runA();
+};
+ACT['au-export'] = async () => { try { const r = await api('export.table', { table: 'Audit' }); downloadText(r.fileName, r.csv); } catch (e) { fail(e); } };
+
+/* ======================= CONFIG ======================= */
+VIEWS.config = async main => {
+  main.innerHTML = html`<h2 style="margin-bottom:10px">Configuration</h2><div id="cf"><div class="card empty">Loading…</div></div>`.s;
+  const c = await api('config.view', {});
+  $('#cf').innerHTML = html`<div class="grid g2"><div class="card col"><h3>Web app</h3><dl class="kv"><dt>App URL</dt><dd class="small mono">${c.appUrl || 'Not deployed yet'}</dd>
+      <dt>Triggers</dt><dd class="small">${c.triggers.join(', ') || html`<span style="color:var(--bad)">none — run "Re-install scheduled triggers" from the sheet menu</span>`}</dd>
+      <dt>Reports folder</dt><dd class="small mono">${c.reportsFolder}</dd><dt>Backups folder</dt><dd class="small mono">${c.backupsFolder}</dd></dl></div>
+    <form class="card col" id="cf-api"><h3>WhatsApp / SMS API (for MSG_MODE = API)</h3><p class="small muted">Credentials are stored in Script Properties, not in the sheet.</p>
+      <label class="f"><span>Provider endpoint (https)</span><input type="text" name="url" placeholder="https:\/\/…"></label><label class="f"><span>API token</span><input type="password" name="token" placeholder="${c.apiConfigured ? '•••••• (set)' : ''}"></label>
+      <label class="f"><span>Inbound webhook URL (give to your provider)</span><input type="text" readonly value="${c.webhookUrl}"></label>
+      <label class="check"><input type="checkbox" name="rotateWebhookKey"> Rotate webhook key</label><button class="btn">Save API settings</button></form></div>
+    <div class="card col section"><h3>Exports (Admin only)</h3><div class="actions">${['Leads', 'LeadTests', 'Statements', 'StatementLines', 'Transfers', 'Allocations', 'Messages', 'Reports', 'DuplicateReviews'].map(t => html`<button class="btn btn-sm btn-ghost" data-act="cf-exp" data-t="${t}">${t}</button>`)}</div></div>
+    <form class="card col section" id="cf-erase"><h3>Erase a patient's data (DPDP request)</h3>
+      <p class="small muted">Removes the patient's name, mobile, spouse name and collection address from every lead for that number, here and in the message log. Lead IDs, dates, status, clinic, partner and amounts stay, so KPI and commission figures are unaffected. Diagnostic report PDFs are not deleted — decide those separately. This cannot be undone.</p>
+      <div class="row"><input type="tel" name="phone" placeholder="10-digit mobile" maxlength="10" required style="width:200px">
+      <input type="text" name="note" placeholder="Reference (optional)" style="flex:1;min-width:160px">
+      <label class="check"><input type="checkbox" name="confirmOpen"> Erase even if leads are still in progress</label>
+      <button class="btn btn-ghost">Erase</button></div></form>
+    <div class="card section"><h3>Config tab</h3><p class="small muted">SLA targets, KPI targets and workflow switches. Changes apply on the next request and are audit-logged.</p><div class="tblwrap" style="margin-top:8px"><table class="tbl"><tr><th>Key</th><th>Value</th><th>Description</th><th></th></tr>
+      ${c.rows.map(r => html`<tr><td class="mono small">${r.Key}</td><td><input type="text" value="${r.Value}" data-key="${r.Key}" class="cf-v" ${r.Key === 'APP_VERSION' ? raw('readonly') : ''}></td><td class="small">${r.Description}</td><td><button class="btn btn-sm btn-ghost" data-act="cf-save" data-key="${r.Key}">Save</button></td></tr>`)}</table></div></div>`.s;
+  $('#cf-api').onsubmit = async e => { e.preventDefault(); try { await api('config.msgApi', formData(e.target)); toast('Saved', 'ok'); go('config'); } catch (err) { fail(err); } };
+  $('#cf-erase').onsubmit = async e => {
+    e.preventDefault();
+    const f = formData(e.target);
+    if (!await confirmBox('Erase patient data for ' + f.phone + '? This cannot be undone.', 'Erase')) return;
+    try { const r = await api('privacy.erasePatient', f); toast('Erased across ' + r.erased + ' lead(s): ' + r.leadIds.join(', '), 'ok'); e.target.reset(); } catch (err) { fail(err); }
+  };
+};
+ACT['cf-save'] = async el => {
+  const input = $('.cf-v[data-key="' + el.dataset.key + '"]');
+  try { await api('md.save', { table: 'Config', row: { Key: el.dataset.key, Value: input.value }, note: 'Config edit' }); toast(el.dataset.key + ' saved', 'ok'); S.boot = await api('boot', {}, { silent: true }); } catch (e) { fail(e); }
+};
+ACT['cf-exp'] = async el => { try { const r = await api('export.table', { table: el.dataset.t }); downloadText(r.fileName, r.csv); } catch (e) { fail(e); } };
+
+/* ======================= PARTNER: REQUEST NEW LAB (BRD §12.5) ======================= */
+VIEWS.requestlab = main => {
+  main.innerHTML = html`<div style="max-width:760px"><h2 style="margin-bottom:10px">Request a new lab</h2><form class="card col" id="rl">
+    <p class="small muted">The lab is created in Draft. The DCP Admin validates it and activates it before it can receive bookings.</p>
+    <div class="grid g2"><label class="f"><span class="req">Lab name</span><input type="text" name="LabName" required></label>
+    <label class="f"><span class="req">Clinic served</span><select name="ClinicIDServed">${S.boot.clinics.map(c => html`<option value="${c.id}">${c.name}</option>`)}</select></label>
+    <label class="f" style="grid-column:1/-1"><span class="req">Full address</span><textarea name="Address" required></textarea></label>
+    <label class="f"><span class="req">Pincode</span><input type="text" name="Pincode" required maxlength="6"></label><label class="f"><span class="req">Google Maps link</span><input type="text" name="MapsLink" required></label>
+    <label class="f"><span class="req">Lab phone</span><input type="tel" name="LabPhone" required></label><label class="f"><span class="req">Lab manager name</span><input type="text" name="LabManagerName" required></label>
+    <label class="f"><span class="req">Manager mobile</span><input type="tel" name="LabManagerMobile" required></label><label class="f"><span>Manager email</span><input type="email" name="LabManagerEmail"></label>
+    <label class="f"><span class="req">Modes</span><select name="Modes"><option>Lab visit</option><option>Home collection</option><option>Both</option></select></label><label class="f"><span>Home-collection pincodes</span><input type="text" name="HomeCollectionPincodes" placeholder="400064, 400097"></label>
+    <label class="f"><span class="req">Tests performed</span><select name="TestsPerformed"><option value="ALL_PATHOLOGY,ALL_RADIOLOGY_USG">Pathology + radiology / USG</option><option value="ALL_PATHOLOGY_ONLY">Pathology only</option></select></label>
+    <label class="f"><span>NABL / ISO certificate no.</span><input type="text" name="NABLCertNumber"></label></div><button class="btn">Submit request</button></form></div>`.s;
+  $('#rl').onsubmit = async e => { e.preventDefault(); try { const r = await api('lab.request', { lab: formData(e.target) }); toast('Requested ' + r.labId + ' — awaiting Admin validation', 'ok'); e.target.reset(); } catch (err) { fail(err); } };
+};
+</script>
+</body>
+</html>

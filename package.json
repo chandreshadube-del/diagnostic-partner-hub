@@ -1,0 +1,15 @@
+{
+  "name": "diagnostic-partner-hub",
+  "private": true,
+  "description": "Gynoveda DCP \u2014 Apps Script server and web client, with Node test harnesses: server logic against mocked Google services, and the real page in Chromium.",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "node --test tests/e2e/*.e2e.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}

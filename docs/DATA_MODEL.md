@@ -2,7 +2,7 @@
 
 Structure of the Google Sheet `DCP_App_Master_Seed_v1`, which the Apps Script app
 in `apps-script/` reads through its `SPREADSHEET_ID` script property. Tab names
-match the `SH` map at the top of `Code.gs`; column names match the header row the
+match the `SH` map at the top of `apps-script/00_core.gs`; column names match the header row the
 app reads by name.
 
 Read from the live sheet on 2026-10-20. Row counts exclude the header.
@@ -26,6 +26,26 @@ from. Four differences, all of them expected:
 
 Everything else — all 22 tab names, in the same order, and every column name on
 the other 21 tabs — is identical to the xlsx.
+
+## Ahead of the sheet: v3.0.13
+
+The sources in `apps-script/` are **v3.0.13**, which expects more than the live sheet has. Re-running `setup()`
+(safe — see `apps-script/README.md`) adds:
+
+| Tab | Adds | Why |
+| --- | --- | --- |
+| `Leads` | `RxFileID`, `RxFileName`, `RxUploadedAt` | prescription-pad photo, one per lead (→ 56 columns) |
+| `Leads` | `VisitNumber` | which clinic visit the lead is for (V1, V2, V3…); lead capture now requires it (→ 57 columns) |
+| `Config` | `MAX_PRESCRIPTION_MB` (8) | photo size cap; the code falls back to 8 if the row is missing |
+
+Until then a lead is captured without a stored visit number or photo — the capture succeeds and the field is
+silently discarded, and the dashboard's *by visit* split shows everything as *Unspecified*.
+
+`ClinicFootfall` is no longer read or written by the app (adoption and conversion are computed from `Leads` since
+v3.0.10). The tab must still exist: `setup()` checks all 22.
+
+Two fields are written onto `LeadTests` rows by the code, `RateCardID` and `RateCardVersion`, but the tab has no such
+columns, so they are discarded. Nothing reads them back; the test suite lists this as a known, harmless drop.
 
 `Audit` runs `AUD-00001`–`AUD-00020` with `AUD-00009` absent, which is consistent
 with `nextId_` reserving an ID under lock for a write that then failed.

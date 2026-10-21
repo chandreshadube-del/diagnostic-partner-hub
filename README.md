@@ -10,16 +10,16 @@ collected.
 
 | Path | What it is |
 | --- | --- |
-| `apps-script/` | the production server, v3.0.3 — Google Apps Script over a 22-tab Google Sheet ([setup and deploy](apps-script/README.md)) |
-| `docs/DCP_Role_Workflows.md` | who does what, and when: the eight stages, the four roles, the settlement chain, and every branch off the main path |
-| `docs/DATA_MODEL.md` | the 22 tabs of the master seed — tab names, columns, row counts |
-| `docs/PRIVACY.md` | why the seed workbook is not committed here |
+| `apps-script/` | the production app, **v3.0.13** — ten server modules, the `Index.html` client and the manifest ([deploy, upgrade, changes](apps-script/README.md)) |
+| `tests/` | `npm test` runs the real server sources against mocked Google services and a synthetic workbook |
+| `docs/DCP_Role_Workflows.md` | who does what, and when: the eight stages, the four roles, the settlement chain, every branch off the main path |
+| `docs/DATA_MODEL.md` | the 22 tabs of the Google Sheet — columns and row counts, and what v3.0.13 adds |
+| `docs/PRIVACY.md` | why the seed workbook is not committed, and one known erasure gap |
 | `index.html` | an earlier standalone browser prototype, kept for reference |
 
-The prototype in `index.html` predates the Apps Script app and uses its own
-simplified status list (Pending → Handed over to Lab → … → Delivered). The
-statuses the server actually enforces are the ones in `TRANSITIONS` in
-`apps-script/Code.gs`, described in `docs/DCP_Role_Workflows.md`.
+The prototype in `index.html` predates the Apps Script app and uses its own simplified status list
+(Pending → Handed over to Lab → … → Delivered). The statuses the server actually enforces are the ones in
+`TRANSITIONS` in `apps-script/00_core.gs`, described in `docs/DCP_Role_Workflows.md`.
 
 ## The shape of it
 

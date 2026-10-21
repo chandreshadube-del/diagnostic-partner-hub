@@ -628,6 +628,78 @@ describe('10 · privacy (DPDP)', () => {
     assert.ok(some.purged >= 1, 'leads closed more than 24 months ago are scrubbed');
     A.call(tok.admin, 'md.save', { table: 'Config', row: { Key: 'PII_RETENTION_ENABLED', Value: 'FALSE' }, note: 'restore' });
   });
+
+  // --- prescription-pad photos go with the identifiers --------------------------------------------------------
+  const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 7)]).toString('base64');
+  const rxLead = extra => { const r = create(Object.assign({ rxB64: JPEG }, extra)); ok(r, 'lead with a prescription photo'); return r.data.leadId; };
+  const leadRow = id => A.rows('Leads').find(x => x.LeadID === id);
+  const trashed = fid => A.ev('__gas.files["' + fid + '"].trashed');
+  const erase = (phone) => A.call(tok.admin, 'privacy.erasePatient', { phone: phone, confirmOpen: true });
+
+  it('erasure also moves the prescription photo to the Drive trash and clears its reference', () => {
+    const id = rxLead({ patientName: 'Photo Erase', phone: '9000000801' }); const fid = leadRow(id).RxFileID;
+    assert.ok(fid); assert.equal(trashed(fid), false);
+    const r = erase('9000000801'); ok(r);
+    assert.equal(r.data.photosTrashed, 1); assert.equal(trashed(fid), true, 'the Drive file must be in the trash');
+    const row = leadRow(id);
+    assert.equal(row.PatientName, '[redacted]');
+    assert.deepEqual([row.RxFileID, row.RxFileName, row.RxUploadedAt], ['', '', ''], 'no pointer to the photo may remain');
+    fails(A.call(tok.admin, 'lead.getPrescription', { leadId: id }), /No prescription photo/);
+    assert.match(A.rows('Audit').filter(a => a.Action === 'PII_ERASED').pop().AfterJSON, /"photosTrashed":1/);
+  });
+  it('a lead with no photo is erased exactly as before', () => {
+    const r = create({ phone: '9000000806' }); ok(r);
+    const e = erase('9000000806'); ok(e); assert.equal(e.data.photosTrashed, 0); assert.equal(leadRow(r.data.leadId).PatientName, '[redacted]');
+  });
+  it('erasure still completes when the photo file is already gone from Drive', () => {
+    const id = rxLead({ phone: '9000000802' }); A.ev('delete __gas.files["' + leadRow(id).RxFileID + '"]');
+    ok(erase('9000000802'));
+    assert.equal(leadRow(id).PatientName, '[redacted]'); assert.equal(leadRow(id).RxFileID, '');
+  });
+  it('if the photo cannot be trashed, nothing is erased and the message says why — then a retry succeeds', () => {
+    const id = rxLead({ phone: '9000000803' }); const fid = leadRow(id).RxFileID;
+    A.ev('__gas.trashFail = true');
+    try {
+      const r = fails(erase('9000000803'), /prescription photo for .* could not be moved to the Drive trash, so nothing was erased/);
+      assert.ok(r.error.includes(id), 'the message names the lead');
+      const row = leadRow(id);
+      assert.equal(row.PatientName, 'Test Patient', 'the lead must not be redacted'); assert.equal(row.Phone, '9000000803'); assert.equal(row.RxFileID, fid);
+      assert.equal(A.rows('Audit').filter(a => a.Action === 'PII_ERASED' && a.Note.includes(id)).length, 0, 'no erasure may be logged for a refused erasure');
+    } finally { A.ev('__gas.trashFail = false'); }
+    ok(erase('9000000803'));
+    assert.equal(leadRow(id).PatientName, '[redacted]'); assert.equal(leadRow(id).RxFileID, ''); assert.equal(trashed(fid), true);
+  });
+  it('the weekly job’s retention scrub trashes photos, runs under the lock, writes its audit entry, and a stuck photo waits for the next run', () => {
+    const a = rxLead({ phone: '9000000804' }), b = rxLead({ phone: '9000000805' });
+    ok(go(tok.cmA, a, 'Cancelled', { reason: 'Price' })); ok(go(tok.cmA, b, 'Cancelled', { reason: 'Price' }));
+    const fa = leadRow(a).RxFileID, fb = leadRow(b).RxFileID;
+    ok(A.call(tok.admin, 'md.save', { table: 'Config', row: { Key: 'PII_RETENTION_ENABLED', Value: 'TRUE' }, note: 'test' }));
+    A.ev('globalThis.__lockSeen = []; globalThis.__origUM = DB.updateMany; DB.updateMany = function (n) { if (n === "Leads") __lockSeen.push(__gas.lockHeld); return __origUM.apply(this, arguments); };');
+    A.advanceHours(24 * 365 * 3);
+    try {
+      A.ev('__gas.trashFailIds = ["' + fb + '"]');
+      A.fn('weeklyBackup');                                                    // the real trigger, not purgePii_ directly
+      assert.equal(leadRow(a).PatientName, '[redacted]'); assert.equal(trashed(fa), true); assert.equal(leadRow(a).RxFileID, '');
+      assert.equal(leadRow(b).PatientName, 'Test Patient', 'never scrub a lead and leave its photo behind'); assert.equal(leadRow(b).RxFileID, fb);
+      const rec = A.rows('Audit').filter(x => x.Action === 'PII_PURGED').pop();
+      assert.ok(rec, 'a scheduled purge must be on the audit record');
+      assert.match(rec.Note, new RegExp('skipped.*' + b)); assert.match(rec.AfterJSON, /"photosTrashed":[1-9]/);
+      const locks = A.json('__lockSeen'); assert.ok(locks.length >= 1 && locks.every(Boolean), 'Leads rows must be rewritten while holding the script lock');
+      A.ev('__gas.trashFailIds = []'); A.advanceHours(1 / 60);
+      A.fn('weeklyBackup');
+      assert.equal(leadRow(b).PatientName, '[redacted]'); assert.equal(trashed(fb), true); assert.equal(leadRow(b).RxFileID, '');
+    } finally {
+      A.advanceHours(-24 * 365 * 3 - 1 / 60); A.ev('__gas.trashFailIds = []; DB.updateMany = __origUM;');
+      A.call(tok.admin, 'md.save', { table: 'Config', row: { Key: 'PII_RETENTION_ENABLED', Value: 'FALSE' }, note: 'restore' });
+    }
+  });
+  it('erasure works on a workbook that has not had the Rx columns added yet (setup() not re-run)', () => {
+    const B = createApp();                                    // fresh live-shaped workbook, setup() deliberately not run
+    assert.equal(B.ev('DB.hasColumn("Leads", "RxFileID")'), false);
+    const cm = B.login('cm.a@example.test'), adm = B.login('owner@example.test');
+    ok(B.call(cm, 'lead.create', mkLead({ phone: '9000000807' })), 'capture');
+    const e = B.call(adm, 'privacy.erasePatient', { phone: '9000000807', confirmOpen: true }); ok(e); assert.equal(e.data.photosTrashed, 0);
+  });
 });
 
 describe('11 · messaging and the inbound webhook', () => {

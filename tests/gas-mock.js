@@ -198,7 +198,11 @@
   class File {
     constructor(name, blob, parent) { this.id = 'FILE' + (++gas.seq); this.name = name; this.blob = blob; this.parent = parent; this.trashed = false; this.created = new FakeDate(); gas.files[this.id] = this; }
     getId() { return this.id; } getName() { return this.name; } getBlob() { return this.blob; }
-    setTrashed(b) { this.trashed = !!b; return this; } getDateCreated() { return this.created; }
+    setTrashed(b) {
+      if (gas.trashFail || (gas.trashFailIds || []).indexOf(this.id) >= 0) throw new Error('Exception: You do not have permission to trash this file.');
+      this.trashed = !!b; return this;
+    }
+    getDateCreated() { return this.created; }
     makeCopy(name, folder) { return (folder || this.parent).createFile(makeBlob(this.blob._buf, this.blob.getContentType(), name)); }
   }
   class Folder {

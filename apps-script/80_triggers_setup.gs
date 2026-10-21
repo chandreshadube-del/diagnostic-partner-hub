@@ -140,8 +140,9 @@ function weeklyBackup() {
   files.sort((x, y) => y.getDateCreated() - x.getDateCreated());
   files.slice(keep).forEach(f => f.setTrashed(true));
   // DPDP retention scrub runs after the snapshot, so a pre-scrub copy always exists.
-  // No-op unless an Admin has turned PII_RETENTION_ENABLED on.
-  purgePii_();
+  // No-op unless an Admin has turned PII_RETENTION_ENABLED on. It rewrites Leads rows, so it takes the script lock like
+  // every other write (re-reading inside it), and flushes its own audit entry — a trigger run has no api() to do that.
+  withLock_(function () { freshRun_(); purgePii_(); flushAudit_(); });
 }
 
 function installTriggers_() {

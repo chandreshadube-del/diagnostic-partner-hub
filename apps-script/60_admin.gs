@@ -623,11 +623,29 @@ function exportTable_(ctx, p) {
  *  and the KPI and commission reports depend on them.
  *  Diagnostic report PDFs in Drive are NOT touched: deleting clinical records
  *  is a separate decision with its own retention obligations.
+ *  Prescription-pad photos ARE moved to the Drive trash: they show the
+ *  patient's name, so they go with the identifiers.
  * --------------------------------------------------------------------------*/
 const PII_REDACTED_ = '[redacted]';
 const PII_TERMINAL_ST_ = [ST.CLOSED, ST.CANCEL, ST.NI];
 
 function piiPurged_(lead) { return str_(lead.PatientName) === PII_REDACTED_; }
+
+/**
+ * Moves a lead's prescription-pad photo to the Drive trash and clears its reference on the row (the caller
+ * persists the row). Returns '' on success — including "no photo" and "file already gone" — or the LeadID when the
+ * file exists but could not be trashed, so the caller can refuse rather than leave an identifiable photo behind
+ * with nothing pointing at it. DriveApp can only trash, not hard-delete: Drive empties its trash after 30 days.
+ */
+function dropPrescription_(lead) {
+  const id = str_(lead.RxFileID);
+  if (!id) return '';
+  let file = null;
+  try { file = DriveApp.getFileById(id); } catch (e) { /* already gone */ }
+  if (file) { try { file.setTrashed(true); } catch (e) { return str_(lead.LeadID); } }
+  lead.RxFileID = ''; lead.RxFileName = ''; lead.RxUploadedAt = '';
+  return '';
+}
 
 /** Date a lead became final — ClosedAt if set, else the last status change. */
 function leadTerminalDate_(lead) {
@@ -677,10 +695,20 @@ function purgePii_() {
     const t = leadTerminalDate_(l);
     return !!t && t < cutoff;
   });
-  const n = scrubLeadsPii_(due);
-  if (n) audit_(null, 'PII_PURGED', '', 'Leads', 'retention', null,
-    { leads: n, retentionMonths: months, closedBefore: cutoff }, 'Scheduled DPDP retention scrub');
-  return { enabled: true, purged: n, cutoff: cutoff, retentionMonths: months };
+  // A lead whose photo can't be trashed is skipped whole and retried next week — never scrubbed with the photo left behind.
+  let photos = 0;
+  const stuck = [];
+  const ready = due.filter(l => {
+    const had = !!str_(l.RxFileID), failed = dropPrescription_(l);
+    if (failed) { stuck.push(failed); return false; }
+    if (had) photos++;
+    return true;
+  });
+  const n = scrubLeadsPii_(ready);
+  if (n || stuck.length) audit_(null, 'PII_PURGED', '', 'Leads', 'retention', null,
+    { leads: n, retentionMonths: months, closedBefore: cutoff, photosTrashed: photos, skippedPhotoNotTrashed: stuck.length },
+    'Scheduled DPDP retention scrub' + (stuck.length ? ' · skipped (photo could not be trashed): ' + stuck.join(', ') : ''));
+  return { enabled: true, purged: n, cutoff: cutoff, retentionMonths: months, photosTrashed: photos, skipped: stuck.length };
 }
 
 /**
@@ -700,9 +728,13 @@ function erasePatient_(ctx, p) {
       'Tick the confirmation to erase anyway.', 'ERASE_OPEN_LEADS');
   }
   const ids = leads.map(l => str_(l.LeadID));
+  const photos = leads.filter(l => str_(l.RxFileID)).length;
+  const stuck = leads.map(l => dropPrescription_(l)).filter(Boolean);
+  need_(!stuck.length, 'The prescription photo for ' + stuck.join(', ') + ' could not be moved to the Drive trash, so nothing was erased. ' +
+    'Try again in a minute; if it repeats, trash the file in Drive by hand and retry.');
   const n = scrubLeadsPii_(leads);
   audit_(ctx, 'PII_ERASED', '', 'Leads', 'erasure-request', null,
-    { leads: n, openAtErasure: open.length, phone: '••••••' + phone.slice(-4) },
+    { leads: n, openAtErasure: open.length, phone: '••••••' + phone.slice(-4), photosTrashed: photos },
     'DPDP erasure request · ' + ids.join(', ') + (str_(p.note) ? ' · ' + str_(p.note) : ''));
-  return { erased: n, leadIds: ids, openAtErasure: open.length };
+  return { erased: n, leadIds: ids, openAtErasure: open.length, photosTrashed: photos };
 }

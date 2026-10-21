@@ -81,10 +81,13 @@ here is strong evidence, not a substitute for opening the deployed app once.
 
 ## Changes from the v3.0.13 files as received
 
-Two defects found by the tests are fixed in this directory. If you maintain the project in the Apps Script
-editor, paste in `80_triggers_setup.gs` and `70_dashboard.gs`. `APP_VERSION` is unchanged.
+Two defects found by the tests are fixed, and one behaviour change was requested. If you maintain the project in the
+Apps Script editor, paste in `80_triggers_setup.gs`, `70_dashboard.gs` and `60_admin.gs`. `APP_VERSION` is unchanged;
+the other seven modules and `Index.html` are byte-identical to what was supplied.
 
 - **`80_triggers_setup.gs` — `setup()` no longer resets the Admin password on a re-run.** It issued a fresh temporary password to the owner every time it ran, but the app's own messages tell users to "run setup() again" to pick up new columns. The Audit tab on the live sheet records six passwords issued with the note `setup()` (from `setup()` itself or the menu item, which share it). It now issues one only if the Audit log has no earlier `setup()` password.
 - **`70_dashboard.gs` — the month-over-month table read two columns that don't exist.** `Leads.PatientGender` and `Leads.PatientAmountRs`. *Male Test* was always 0 (every test counted as female) and *Gyno Margin %* was always blank. They now use `Gender` and `ExpectedPatientPrice`.
+- **`60_admin.gs` — erasure and the retention scrub now move the prescription photo to the Drive trash** and clear its reference (requested). An erasure whose photo cannot be trashed is refused and changes nothing; see `docs/PRIVACY.md`.
+- **`80_triggers_setup.gs` — the weekly job's retention scrub now takes the script lock and writes its audit entry.** It rewrote `Leads` rows unlocked and never flushed its audit buffer, so a scheduled purge left no record. Found while testing the photo change.
 
 Not changed, for your decision: see the pull request description.

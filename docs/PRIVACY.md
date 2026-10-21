@@ -43,16 +43,24 @@ If production rows are ever wanted in the repo, make it private first and strip 
 passwords, since a hash in git history outlives a later deletion). Note that `.gitignore` blocks `*.xlsx` and `*.csv`
 as a backstop; removing those lines is a decision about patient data, not a housekeeping change.
 
-## Known gap: prescription photos survive an erasure
+## Prescription photos go with an erasure
 
 v3.0.13 stores a photo of the prescription pad per lead in Drive (`DCP Prescriptions/<clinic>/<yyyy-MM>/<LeadID>.jpg`),
-referenced by `Leads.RxFileID` / `RxFileName`. The DPDP erase (`erasePatient_`) and the retention scrub (`purgePii_`)
-redact the name, spouse name, phone and collection address on the lead row, but do not touch those fields or the file.
+referenced by `Leads.RxFileID` / `RxFileName` / `RxUploadedAt`. A prescription pad normally shows the patient's name, so
+both the on-demand DPDP erase (`erasePatient_`) and the scheduled retention scrub (`purgePii_`) now move the photo to the
+Drive trash and clear those three fields along with the name, phone and address. Report PDFs are still left alone — the
+code treats clinical records as a separate decision.
 
-Verified end to end: after an erasure the name reads `[redacted]` while `lead.getPrescription` still returns the
-image. The code takes the same position for report PDFs — clinical records are "a separate decision" — but a
-prescription pad normally shows the patient's name, so an erased patient can remain identifiable from it.
+Behaviour worth knowing:
 
-Not changed here, because trashing Drive files is destructive and the retention policy is the owner's call. If you
-decide photos should go with the erasure, the change is small: in `scrubLeadsPii_` (`60_admin.gs`) trash the file
-and clear the three `Rx*` fields.
+- **It is the Drive trash, not a hard delete.** Apps Script's `DriveApp` can only trash; Drive empties the trash after
+  30 days. Until then the file is recoverable from the deploying user's trash. Empty it by hand if you need it gone sooner.
+- **An erasure either completes or changes nothing.** If a photo exists but cannot be trashed, the erasure is refused
+  with a message naming the lead, and the lead is not redacted. Retry; if it repeats, trash the file in Drive by hand.
+  A file that is already gone from Drive does not block an erasure.
+- **The retention scrub skips such a lead and retries it next week** rather than redact it and leave the photo behind.
+  The skip is named in the audit entry.
+- Leads erased *before* this change keep their photo reference. Nothing finds them again (the phone is gone), so trash
+  those files from the Drive folder by hand if any exist.
+- The scheduled scrub now takes the script lock, like every other write, and writes its own `PII_PURGED` audit entry.
+  Before, a purge by the weekly job left no audit record at all.

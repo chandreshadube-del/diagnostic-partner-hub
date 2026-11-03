@@ -86,3 +86,37 @@ def test_failed_episode_needs_reason():
             created_at="2026-11-03T00:00:00Z",
             topic="t", repo_full_name="a/b", state="failed",
         )
+
+
+def test_retry_note_restates_the_broken_rule():
+    """Three identical failures in a row meant the model was never told the rule."""
+    from vtuber.script_gen import _retry_note
+
+    note = _retry_note("scenes.3.payload.repo_overview.bullets: List should have at least 2 items")
+    assert "2 to 4 strings" in note
+    assert "REJECTED" in note
+
+
+def test_retry_note_handles_several_violations():
+    from vtuber.script_gen import _retry_note
+
+    note = _retry_note("scenes.0.payload.comparison.rows: too short; scenes.2.fact_ids: missing")
+    assert "2 to 4 [label, left, right] triples" in note
+    assert "at least one fact_id" in note
+
+
+def test_schema_hint_is_itself_valid():
+    """The example shown to the model must satisfy the schema it illustrates."""
+    import json
+
+    from vtuber.script_gen import SCHEMA_HINT
+    from vtuber.models import Script
+
+    Script.model_validate(json.loads(SCHEMA_HINT.replace("...", "placeholder text here")))
+
+
+def test_generation_error_carries_the_rejected_payload():
+    from vtuber.script_gen import ScriptGenerationError
+
+    exc = ScriptGenerationError("nope", last_raw={"scenes": []})
+    assert exc.last_raw == {"scenes": []}

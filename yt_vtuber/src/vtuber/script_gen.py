@@ -37,28 +37,54 @@ Structure, exactly five scenes in this order:
 3 limitation - one real trade-off, limitation, or thing the evidence does NOT establish.
 4 takeaway   - what the viewer should do or conclude. No call to subscribe.
 
-Templates (pick per scene, use at least three distinct ones across the episode):
-- repo_overview  {repo, tagline, language, license, bullets[2-4]}
-- terminal_demo  {title, lines[[kind,text],...]} kind is "prompt" | "out" | "comment"
-- comparison     {title, left_label, right_label, rows[[label,left,right],...]}
-- architecture   {title, nodes[[name,note],...], edge_label}
+Templates. Use at least THREE distinct ones across the five scenes. Item counts are
+hard minimums and maximums — a list with too few entries is rejected outright:
+
+- repo_overview  bullets: 2 to 4 strings      (max 96 chars each)
+- terminal_demo  lines:   2 to 10 pairs       ["prompt"|"out"|"comment", text<=72 chars]
+- comparison     rows:    2 to 4 triples      [label, left, right], each <=96 chars
+- architecture   nodes:   2 to 5 pairs        [name<=64, note<=48]
+
+Which template suits which role, as a default — vary it when the evidence suggests better:
+  hook       -> repo_overview
+  what       -> repo_overview or architecture
+  detail     -> terminal_demo
+  limitation -> comparison
+  takeaway   -> architecture
 
 Avatar poses: idle, talk, point, think, nod.
 """
 
+#: A complete, well-formed example. Small local models copy the shape they are
+#: shown far more reliably than they follow prose, so every template appears
+#: here at its minimum legal size.
 SCHEMA_HINT = """{
   "angle": "one sentence: the original framing this episode adds",
   "scenes": [
     {"index":0,"role":"hook","template":"repo_overview","avatar_pose":"point",
      "narration":"...","fact_ids":[],
      "payload":{"kind":"repo_overview","repo":"name","tagline":"...","language":"Python",
-                "license":"MIT","bullets":["...","..."]}}
+                "license":"MIT","bullets":["first bullet","second bullet"]}},
+    {"index":1,"role":"what","template":"repo_overview","avatar_pose":"talk",
+     "narration":"...","fact_ids":["f_identity"],
+     "payload":{"kind":"repo_overview","repo":"name","tagline":"...","language":"Python",
+                "license":"MIT","bullets":["first bullet","second bullet","third bullet"]}},
+    {"index":2,"role":"detail","template":"terminal_demo","avatar_pose":"talk",
+     "narration":"...","fact_ids":["f_usage_0"],
+     "payload":{"kind":"terminal_demo","title":"quickstart",
+                "lines":[["prompt","pip install name"],["out","# from the README"]]}},
+    {"index":3,"role":"limitation","template":"comparison","avatar_pose":"think",
+     "narration":"...","fact_ids":["f_license"],
+     "payload":{"kind":"comparison","title":"What is verified",
+                "left_label":"Verified","right_label":"Project's claim",
+                "rows":[["Licence","MIT","n/a"],["Speed","not measured","fast, they say"]]}},
+    {"index":4,"role":"takeaway","template":"architecture","avatar_pose":"nod",
+     "narration":"...","fact_ids":[],
+     "payload":{"kind":"architecture","title":"How to evaluate it",
+                "nodes":[["Read","the release notes"],["Run","the quickstart"]],
+                "edge_label":"then"}}
   ]
 }"""
-
-
-class ScriptGenerationError(RuntimeError):
-    pass
 
 
 def _evidence_block(packet: EvidencePacket, cfg: ScriptConfig) -> str:
@@ -95,6 +121,14 @@ def _language_of(packet: EvidencePacket) -> str | None:
     return None
 
 
+class ScriptGenerationError(RuntimeError):
+    """Carries the last payload the model produced, for diagnosis."""
+
+    def __init__(self, message: str, last_raw: dict | None = None) -> None:
+        super().__init__(message)
+        self.last_raw = last_raw
+
+
 def generate(
     writer: LLM,
     packet: EvidencePacket,
@@ -106,6 +140,7 @@ def generate(
     user = _evidence_block(packet, cfg)
     notes: list[str] = []
     last_error = ""
+    last_raw: dict[str, Any] | None = None
     for attempt in range(1, max_attempts + 1):
         try:
             raw: dict[str, Any] = writer.json_complete(SYSTEM, user, schema_hint=SCHEMA_HINT)
@@ -114,22 +149,54 @@ def generate(
             notes.append(f"attempt {attempt}: {last_error}")
             continue
         raw.pop("_keywords", None)
+        last_raw = raw
         try:
             script = Script.model_validate(raw)
         except ValidationError as exc:
             last_error = _compact_errors(exc)
             notes.append(f"attempt {attempt}: schema rejected: {last_error}")
-            user = _evidence_block(packet, cfg) + f"\n\nYour previous answer was rejected: {last_error}\nFix it."
+            user = _evidence_block(packet, cfg) + _retry_note(last_error)
             continue
         words = script.word_count
         if not (cfg.target_words_min <= words <= cfg.target_words_max):
             last_error = f"{words} spoken words, need {cfg.target_words_min}-{cfg.target_words_max}"
             notes.append(f"attempt {attempt}: {last_error}")
-            user = _evidence_block(packet, cfg) + f"\n\nYour previous answer had {last_error}. Rewrite to fit."
+            user = (
+                _evidence_block(packet, cfg)
+                + f"\n\nYour previous answer had {last_error}. Keep the same five scenes and the "
+                  f"same facts; only tighten or expand the narration wording."
+            )
             continue
         notes.append(f"accepted on attempt {attempt} ({words} words)")
         return script, notes
-    raise ScriptGenerationError(f"no valid script after {max_attempts} attempts: {last_error}")
+    raise ScriptGenerationError(
+        f"no valid script after {max_attempts} attempts: {last_error}",
+        last_raw=last_raw,
+    ) from None
+
+
+def _retry_note(errors: str) -> str:
+    """Point the model at the exact field, and restate the rule it broke."""
+    hints: list[str] = []
+    if "bullets" in errors:
+        hints.append("repo_overview.bullets must contain 2 to 4 strings")
+    if "lines" in errors:
+        hints.append("terminal_demo.lines must contain 2 to 10 [kind, text] pairs")
+    if "rows" in errors:
+        hints.append("comparison.rows must contain 2 to 4 [label, left, right] triples")
+    if "nodes" in errors:
+        hints.append("architecture.nodes must contain 2 to 5 [name, note] pairs")
+    if "fact_ids" in errors:
+        hints.append("the what, detail and limitation scenes each need at least one fact_id")
+    if "template" in errors or "payload kind" in errors:
+        hints.append("payload.kind must equal the scene's template")
+    note = (
+        f"\n\nYour previous answer was REJECTED by the schema:\n{errors}\n\n"
+        "Return the whole JSON again with that fixed."
+    )
+    if hints:
+        note += " Specifically: " + "; ".join(hints) + "."
+    return note
 
 
 def _compact_errors(exc: ValidationError, limit: int = 4) -> str:

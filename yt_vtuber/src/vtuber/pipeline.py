@@ -165,7 +165,18 @@ def stage_script(ctx: RunContext, episode: Episode, packet: EvidencePacket) -> E
     try:
         script, notes = generate(writer, packet, cfg.script, max_attempts=cfg.llm.max_attempts)
     except ScriptGenerationError as exc:
-        ctx.store.dump_failure_inputs(episode, "script", {"error": str(exc), "repo": episode.repo_full_name})
+        # The payload the model actually produced is the only thing that makes
+        # a schema rejection diagnosable after the fact.
+        ctx.store.dump_failure_inputs(
+            episode,
+            "script",
+            {
+                "error": str(exc),
+                "repo": episode.repo_full_name,
+                "writer": writer.name,
+                "last_model_output": exc.last_raw,
+            },
+        )
         raise PipelineFailed(f"script generation failed: {exc}") from exc
     ctx.notes.extend(notes)
 

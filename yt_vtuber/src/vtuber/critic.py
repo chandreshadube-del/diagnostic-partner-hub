@@ -92,22 +92,48 @@ def _token_pool(texts: list[str]) -> set[str]:
     return pool
 
 
-#: Ordinary English compounds that look like identifiers to the token regex.
-#: Anything outside this list still has to be evidenced, so the failure
-#: direction is "ask for a rewrite", never "wave an invented name through".
-_SAFE_COMPOUNDS = frozenset({
-    "trade-off", "trade-offs", "n/a", "and/or", "read-only", "write-only",
-    "open-source", "closed-source", "command-line", "end-to-end", "out-of-the-box",
-    "real-time", "built-in", "drop-in", "set-up", "follow-up", "day-to-day",
-    "self-hosted", "well-known", "state-of-the-art", "up-to-date", "off-the-shelf",
-    "single-threaded", "multi-threaded", "fine-grained", "coarse-grained",
-    "long-running", "short-lived", "first-class", "third-party", "high-level",
-    "low-level", "side-effect", "side-effects", "plug-and-play", "to-do",
-    "back-end", "front-end", "run-time", "copy-paste", "step-by-step",
-    "rule-of-thumb", "so-called", "in-memory", "on-disk", "per-request",
-    "cross-platform", "pre-release", "post-release", "non-trivial", "half-baked",
-    "all-in-one", "line-by-line", "throwaway-branch",
-})
+#: Common English words. A hyphenated or slashed token whose parts are all in
+#: here is ordinary prose ("on-the-go", "trade-off", "read-only"), not an
+#: identifier needing evidence. Checking the PARTS rather than enumerating whole
+#: compounds is what stops this list leaking: "on-the-go" slipped past a list of
+#: compounds on the first real run.
+_ENGLISH_PARTS = frozenset("""
+a an and are as at be been but by can could did do does for from get go goes going
+had has have he her him his how i if in into is it its me my no not of off on one
+or our out over she should so some than that the their them then there these they
+this those to too two up us was we were what when where which who why will with
+would you your
+after again against all also always any back because before best better between
+both come coming day days down each end even every few find first free full give
+given good great hand here high hold home just keep kept know large last late
+less let level light like line little long look low made make many more most much
+must need never new next now number old only open other own part place point
+public put read real right run same say see self set several short show side
+single small source start state still such sure take team tell test thing think
+time today turn under use used user using very want way week well while work
+world write year
+built case check clean close code core cost data deep done drive drop easy edge
+fast file flow form free front full grade half hard head heavy hour human idea
+item join kind lead learn live load local main mark mass mind mode move name
+near note once order pace pack page pair pass past path pick plan play plus
+power press pull push quick rate ready rest rich road role room rough round
+rule safe save scale scene search send sense serve shape share sharp ship shop
+sign site size slow soft solid sort sound space speak speed spend stand step
+stop store strong study style super sweet switch table talk task term thin
+third throw tight tool top total touch track trade train true trust try type
+view voice wait walk warm watch wave wide win wire wise wood word
+box case off ons the go
+hosted party shelf baked grained threaded trivial sized facing ended going
+coming looking running sitting standing based driven minded ready proof wise
+""".split())
+
+def _is_english_compound(token: str) -> bool:
+    """True when every part of a hyphen/slash/underscore compound is a plain word."""
+    parts = [p for p in re.split(r"[-_/]", token.lower()) if p]
+    if len(parts) < 2:
+        return False
+    return all(p.isalpha() and p in _ENGLISH_PARTS for p in parts)
+
 
 #: Ordinary English words the token regex also matches; they need no evidence.
 _SAFE = {
@@ -115,62 +141,72 @@ _SAFE = {
     "ai", "ml", "llm", "llms", "ui", "ux", "io", "url", "urls", "oss", "mit", "sql",
     "i", "a", "ok", "pr", "prs", "ci", "cd", "tl", "dr", "faq", "readme", "github",
     "python", "javascript", "typescript", "rust", "go", "java", "c", "cpp",
+    "n/a", "tbd", "etc", "e.g", "i.e", "vs",
 }
 
 
-def verify_claims(script: Script, packet: EvidencePacket) -> CriticReport:
-    """Deterministic verification of the script against the evidence packet."""
-    rep = CriticReport()
-    by_id = {f.fact_id: f for f in packet.facts}
-    all_fact_text = [f.claim for f in packet.facts] + [f.quote or "" for f in packet.facts]
-    all_fact_text.append(packet.repo_full_name)
-    all_fact_text.append(packet.topic)
+def _evidence_pools(packet: EvidencePacket) -> tuple[set[str], set[str]]:
+    texts = [f.claim for f in packet.facts] + [f.quote or "" for f in packet.facts]
+    texts += [packet.repo_full_name, packet.topic]
     if packet.license_spdx:
-        all_fact_text.append(packet.license_spdx)
-    global_pool = _token_pool(all_fact_text)
-    global_numbers = set(_NUMBER.findall(" ".join(all_fact_text)))
+        texts.append(packet.license_spdx)
+    return _token_pool(texts), set(_NUMBER.findall(" ".join(texts)))
 
+
+def verify_scene(scene, packet: EvidencePacket, rep: CriticReport | None = None) -> CriticReport:  # noqa: ANN001
+    """Check one scene. Used by the generator's retry loop and by the full pass.
+
+    Running these per scene is what lets a bad scene be rewritten on its own;
+    checking only at the end throws away four good scenes with the fifth.
+    """
+    rep = rep or CriticReport()
+    by_id = {f.fact_id: f for f in packet.facts}
+    global_pool, global_numbers = _evidence_pools(packet)
+
+    unknown = [fid for fid in scene.fact_ids if fid not in by_id]
+    if unknown:
+        rep.missing_citations.append(f"scene {scene.index} cites unknown {unknown}")
+
+    cited = [by_id[fid] for fid in scene.fact_ids if fid in by_id]
+    texts = [c.claim for c in cited] + [c.quote or "" for c in cited]
+    local_pool = _token_pool(texts) if texts else set()
+    local_numbers = set(_NUMBER.findall(" ".join(texts)))
+
+    scene_text = scene.narration + " " + _payload_text(scene)
+
+    for tok in TECHNICAL_TOKEN_RE.findall(scene_text):
+        n = _norm(tok)
+        if n in _SAFE or n.isdigit() or _is_english_compound(n):
+            continue
+        if n in local_pool or n in global_pool:
+            continue
+        rep.unsupported_tokens.append(f"scene {scene.index}: {tok!r}")
+
+    for num in _NUMBER.findall(scene_text):
+        if num in local_numbers or num in global_numbers:
+            continue
+        if num.isdigit() and int(num) <= 10:
+            continue
+        rep.unsupported_numbers.append(f"scene {scene.index}: {num}")
+
+    for pattern, why in FILLER_PATTERNS:
+        if re.search(pattern, scene.narration, re.I):
+            rep.filler.append(f"scene {scene.index}: {why} ({pattern})")
+
+    if any(c.attributed for c in cited):
+        low = scene.narration.lower()
+        if not any(m in low for m in ATTRIBUTION_MARKERS):
+            rep.unattributed_claims.append(
+                f"scene {scene.index} rests on an attributed claim but voices it as fact"
+            )
+    return rep
+
+
+def verify_claims(script: Script, packet: EvidencePacket) -> CriticReport:
+    """Deterministic verification of the whole script against the evidence packet."""
+    rep = CriticReport()
     for scene in script.scenes:
-        unknown = [fid for fid in scene.fact_ids if fid not in by_id]
-        if unknown:
-            rep.missing_citations.append(f"scene {scene.index} cites unknown {unknown}")
-
-        cited = [by_id[fid] for fid in scene.fact_ids if fid in by_id]
-        texts = [c.claim for c in cited] + [c.quote or "" for c in cited]
-        local_pool = _token_pool(texts) if texts else set()
-        local_numbers = set(_NUMBER.findall(" ".join(texts)))
-
-        # Scene text includes the visual payload: a number on screen needs
-        # evidence just as much as a spoken one.
-        scene_text = scene.narration + " " + _payload_text(scene)
-
-        for tok in TECHNICAL_TOKEN_RE.findall(scene_text):
-            n = _norm(tok)
-            if n in _SAFE or n in _SAFE_COMPOUNDS or n.isdigit():
-                continue
-            if n in local_pool or n in global_pool:
-                continue
-            rep.unsupported_tokens.append(f"scene {scene.index}: {tok!r}")
-
-        for num in _NUMBER.findall(scene_text):
-            if num in local_numbers or num in global_numbers:
-                continue
-            # bare small integers used as prose ("one line", "five steps")
-            if num.isdigit() and int(num) <= 10:
-                continue
-            rep.unsupported_numbers.append(f"scene {scene.index}: {num}")
-
-        for pattern, why in FILLER_PATTERNS:
-            if re.search(pattern, scene.narration, re.I):
-                rep.filler.append(f"scene {scene.index}: {why} ({pattern})")
-
-        if any(c.attributed for c in cited):
-            low = scene.narration.lower()
-            if not any(m in low for m in ATTRIBUTION_MARKERS):
-                rep.unattributed_claims.append(
-                    f"scene {scene.index} rests on an attributed claim but voices it as fact"
-                )
-
+        verify_scene(scene, packet, rep)
     return rep
 
 

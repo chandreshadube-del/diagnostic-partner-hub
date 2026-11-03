@@ -92,3 +92,50 @@ def test_payload_numbers_also_need_evidence(stub_script, packet):
     rep = verify_claims(bad, packet)
     assert not rep.passed
     assert any("9999" in n for n in rep.unsupported_numbers)
+
+
+def test_english_compounds_are_not_treated_as_identifiers():
+    """A hand-written list of compounds leaked on the first real run ('on-the-go')."""
+    from vtuber.critic import _is_english_compound
+
+    for word in ("on-the-go", "trade-off", "read-only", "out-of-the-box",
+                 "end-to-end", "real-time", "drop-in", "third-party"):
+        assert _is_english_compound(word), word
+
+
+def test_real_identifiers_still_need_evidence():
+    from vtuber.critic import _is_english_compound
+
+    for token in ("faster-whisper", "owner/repo", "h264_nvenc", "turbo-cache",
+                  "qwen2.5", "v1.2.3"):
+        assert not _is_english_compound(token), token
+
+
+def test_verify_scene_checks_one_scene(stub_script, packet):
+    from vtuber.critic import verify_scene
+
+    assert verify_scene(stub_script.scenes[0], packet).passed
+
+
+def test_verify_scene_catches_an_invented_name(stub_script, packet):
+    from vtuber.critic import verify_scene
+    from vtuber.models import Script
+
+    data = stub_script.model_dump()
+    data["scenes"][1]["narration"] = (
+        "The maintainers say turbo-cache is bundled with it from version two."
+    )
+    scene = Script.model_validate(data).scenes[1]
+    rep = verify_scene(scene, packet)
+    assert not rep.passed
+    assert any("turbo-cache" in t for t in rep.unsupported_tokens)
+
+
+def test_critic_note_names_the_attribution_fix(stub_script, packet):
+    from vtuber.critic import CriticReport
+    from vtuber.script_gen import _critic_note
+
+    rep = CriticReport(unattributed_claims=["scene 2 rests on an attributed claim"])
+    note = _critic_note(rep, "It never opens a network port.")
+    assert "the maintainers say" in note
+    assert '"It never opens a network port."' in note

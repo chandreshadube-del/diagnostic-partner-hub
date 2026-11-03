@@ -21,6 +21,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from .config import ScriptConfig
+from .critic import verify_scene
 from .llm import LLM, LLMError
 from .models import SCENE_ROLES, TEMPLATE_NAMES, EvidencePacket, Scene, Script
 
@@ -149,6 +150,11 @@ def _scene_user(
         + f", and set payload.kind to the same value.\n"
         + ("fact_ids may be empty for this role.\n" if spec.role in ("hook", "takeaway")
            else "fact_ids must list at least one fact_id from the evidence above.\n")
+        + (
+            'If you cite a fact marked "attributed": true, the narration MUST say whose '
+            'claim it is — "the maintainers say", "the README states", "the project '
+            'describes it as". Stating it as plain fact is rejected.\n'
+        )
     )
 
 
@@ -165,6 +171,34 @@ def _length_note(narration: str, target: int) -> str:
         f"Rewrite the whole scene with narration of about {target} words — two full "
         f"sentences. Expand by explaining the point further, never by adding filler, "
         f"and never by claiming anything the evidence does not support."
+    )
+
+
+def _critic_note(report, narration: str) -> str:  # noqa: ANN001 - CriticReport
+    """Explain a critic rejection in terms the model can act on."""
+    lines: list[str] = []
+    if report.unattributed_claims:
+        lines.append(
+            "You cited a fact the project claims about ITSELF but stated it as plain fact. "
+            "Rewrite so the narration names the source: \"the maintainers say ...\", "
+            "\"the README states ...\", \"the project describes it as ...\"."
+        )
+    for tok in report.unsupported_tokens:
+        lines.append(
+            f"{tok} does not appear anywhere in the evidence. Remove that name or use "
+            f"the exact wording the evidence uses."
+        )
+    for num in report.unsupported_numbers:
+        lines.append(f"{num} is a number the evidence does not support. Remove it.")
+    for item in report.filler:
+        lines.append(f"Remove this filler — {item}.")
+    for item in report.missing_citations:
+        lines.append(f"{item}. Use only fact_ids listed in the evidence.")
+    body = "\n".join(f"- {line}" for line in lines)
+    return (
+        f"\n\nYour previous scene was REJECTED by the fact checker. You wrote:\n"
+        f"  \"{narration}\"\n\nProblems:\n{body}\n\n"
+        f"Return the whole scene again, fixed. Keep it about the same length."
     )
 
 
@@ -248,6 +282,17 @@ def _generate_scene(
             last_error = f"{words} words, wanted about {spec.words}"
             notes.append(f"scene {index} attempt {attempt}: {last_error}")
             user = base + _length_note(scene.narration, spec.words)
+            continue
+
+        # The deterministic critic checks run here, not only at the end: a scene
+        # that cites a README claim without attribution, or names something the
+        # evidence never mentions, is rewritten on its own rather than taking
+        # four good scenes down with it.
+        report = verify_scene(scene, packet)
+        if not report.passed:
+            last_error = "; ".join(report.blocking[:4])
+            notes.append(f"scene {index} attempt {attempt}: critic: {last_error}")
+            user = base + _critic_note(report, scene.narration)
             continue
 
         notes.append(f"scene {index} ({spec.role}): {words} words, {scene.template}")

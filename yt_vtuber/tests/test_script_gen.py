@@ -104,3 +104,40 @@ def test_scene_prompts_name_the_earlier_scenes(packet):
     generate(Recorder(), packet, ScriptConfig())
     assert "nothing yet" in seen[0]
     assert "scene 0 (hook)" in seen[1]
+
+
+def test_a_scene_failing_the_critic_is_retried_alone(packet):
+    """Checking only at the end threw away four good scenes with the fifth."""
+    from typing import Any
+
+    from vtuber.config import LLMConfig
+    from vtuber.llm import build
+
+    class Unattributed:
+        """Cites an attributed fact but states it as plain fact, until told off."""
+
+        name = "stub:unattributed"
+
+        def __init__(self) -> None:
+            self.inner = build(LLMConfig(backend="stub"), "writer")
+            self.rejections = 0
+
+        def json_complete(self, system, user, *, schema_hint, schema=None):  # noqa: ANN001
+            out = self.inner.json_complete(system, user, schema_hint=schema_hint, schema=schema)
+            if "REJECTED by the fact checker" in user:
+                self.rejections += 1
+                return out
+            if out.get("role") == "what":
+                out["narration"] = (
+                    "It talks to the fleet daemon over a local unix socket and never opens "
+                    "a network port, which is a real design decision worth knowing about."
+                )
+            return out
+
+        
+    writer = Unattributed()
+    script, notes = generate(writer, packet, ScriptConfig())
+    assert writer.rejections >= 1, notes
+    # The scene was fixed in place; the other four were never regenerated.
+    assert len(script.scenes) == 5
+    assert any("critic" in n for n in notes)

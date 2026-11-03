@@ -45,6 +45,29 @@ _WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+/-]*")
 _NUMBER = re.compile(r"\b\d[\d,]*(?:\.\d+)?\b")
 
 
+#: Limitations that are true of almost any repository and therefore say nothing.
+VACUOUS_LIMITATIONS: tuple[str, ...] = (
+    r"not been benchmark",
+    r"hasn'?t been benchmark",
+    r"no benchmark",
+    r"not been (?:independently )?(?:tested|verified|measured)",
+    r"still (?:young|new|early)",
+    r"documentation (?:could|might) be better",
+    r"may not suit everyone",
+    r"your mileage may vary",
+    r"not for everyone",
+)
+
+#: Connectives that mark the script reasoning about the evidence rather than
+#: restating it. An episode with none of these is a README read aloud.
+ANALYSIS_MARKERS: tuple[str, ...] = (
+    "which means", "that means", "so if", "the trade-off", "the catch",
+    "in practice", "worth knowing", "the point is", "which matters",
+    "because", "so you", "that is why", "the upshot", "the cost is",
+    "unlike", "compared", "instead of", "rather than", "the risk",
+)
+
+
 @dataclass(slots=True)
 class CriticReport:
     unsupported_tokens: list[str] = field(default_factory=list)
@@ -53,6 +76,10 @@ class CriticReport:
     missing_citations: list[str] = field(default_factory=list)
     unattributed_claims: list[str] = field(default_factory=list)
     copied_runs: list[str] = field(default_factory=list)
+    repeated_openings: list[str] = field(default_factory=list)
+    repeated_phrases: list[str] = field(default_factory=list)
+    vacuous_limitation: list[str] = field(default_factory=list)
+    no_analysis: list[str] = field(default_factory=list)
     llm_issues: list[str] = field(default_factory=list)
     llm_verdict: str = "skipped"
 
@@ -66,6 +93,10 @@ class CriticReport:
             ("missing citation", self.missing_citations),
             ("unattributed project claim", self.unattributed_claims),
             ("copied passage", self.copied_runs),
+            ("repeated opening", self.repeated_openings),
+            ("repeated phrase", self.repeated_phrases),
+            ("vacuous limitation", self.vacuous_limitation),
+            ("no original analysis", self.no_analysis),
         ):
             out += [f"{label}: {i}" for i in items]
         return out
@@ -202,11 +233,75 @@ def verify_scene(scene, packet: EvidencePacket, rep: CriticReport | None = None)
     return rep
 
 
+#: Longest run of words a scene may share with an earlier scene.
+MAX_INTERNAL_REPEAT = 4
+#: How many scenes may open with the same three words.
+MAX_SAME_OPENING = 2
+
+
+def check_self_repetition(script: Script) -> CriticReport:
+    """Catch an episode repeating itself — the pattern that reads as mass-produced.
+
+    A real run opened all five scenes with "The maintainers say" and put the
+    same shell command in two of them. Both satisfied every other check.
+    """
+    rep = CriticReport()
+
+    openings: dict[str, list[int]] = {}
+    for scene in script.scenes:
+        key = " ".join(_norm(w) for w in scene.narration.split()[:3])
+        openings.setdefault(key, []).append(scene.index)
+    for key, indices in openings.items():
+        if len(indices) > MAX_SAME_OPENING:
+            rep.repeated_openings.append(
+                f"{len(indices)} scenes open with {key!r} (scenes {indices})"
+            )
+
+    seen: dict[tuple[str, ...], int] = {}
+    for scene in script.scenes:
+        words = [_norm(w) for w in _WORD.findall(scene.narration)]
+        local: set[tuple[str, ...]] = set()
+        for i in range(len(words) - MAX_INTERNAL_REPEAT + 1):
+            gram = tuple(words[i : i + MAX_INTERNAL_REPEAT])
+            if all(w in _SAFE or len(w) < 3 for w in gram):
+                continue  # a run of common short words is not a repeat worth flagging
+            if gram in seen and seen[gram] != scene.index:
+                rep.repeated_phrases.append(
+                    f"scene {scene.index} repeats {' '.join(gram)!r} from scene {seen[gram]}"
+                )
+                break
+            local.add(gram)
+        for gram in local:
+            seen.setdefault(gram, scene.index)
+
+    for scene in script.scenes:
+        if scene.role != "limitation":
+            continue
+        for pattern in VACUOUS_LIMITATIONS:
+            if re.search(pattern, scene.narration, re.I):
+                rep.vacuous_limitation.append(
+                    f"scene {scene.index}: {pattern!r} is true of nearly any project"
+                )
+                break
+
+    low = script.narration.lower()
+    if not any(m in low for m in ANALYSIS_MARKERS):
+        rep.no_analysis.append(
+            "no scene reasons about the evidence — the script restates the sources"
+        )
+    return rep
+
+
 def verify_claims(script: Script, packet: EvidencePacket) -> CriticReport:
     """Deterministic verification of the whole script against the evidence packet."""
     rep = CriticReport()
     for scene in script.scenes:
         verify_scene(scene, packet, rep)
+    repetition = check_self_repetition(script)
+    rep.repeated_openings = repetition.repeated_openings
+    rep.repeated_phrases = repetition.repeated_phrases
+    rep.vacuous_limitation = repetition.vacuous_limitation
+    rep.no_analysis = repetition.no_analysis
     return rep
 
 

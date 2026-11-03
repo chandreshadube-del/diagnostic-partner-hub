@@ -139,3 +139,98 @@ def test_critic_note_names_the_attribution_fix(stub_script, packet):
     note = _critic_note(rep, "It never opens a network port.")
     assert "the maintainers say" in note
     assert '"It never opens a network port."' in note
+
+
+def _script_with(stub_script, **per_index):  # noqa: ANN001
+    from vtuber.models import Script
+
+    data = stub_script.model_dump()
+    for i, narration in per_index.items():
+        data["scenes"][int(i)]["narration"] = narration
+    return Script.model_validate(data)
+
+
+def test_same_opening_in_three_scenes_blocks(stub_script):
+    """A real run opened all five scenes with "The maintainers say"."""
+    from vtuber.critic import check_self_repetition
+
+    script = _script_with(
+        stub_script,
+        **{str(i): f"The maintainers say this is point number {i} which means it matters."
+           for i in range(5)},
+    )
+    rep = check_self_repetition(script)
+    assert not rep.passed
+    assert rep.repeated_openings
+
+
+def test_two_scenes_may_share_an_opening(stub_script):
+    from vtuber.critic import check_self_repetition
+
+    script = _script_with(
+        stub_script,
+        **{"0": "The maintainers say it runs locally, which means no network hop.",
+           "1": "The maintainers say the config is one file, so onboarding is quick."},
+    )
+    assert not check_self_repetition(script).repeated_openings
+
+
+def test_a_command_repeated_across_scenes_blocks(stub_script):
+    """The takeaway repeated the detail's shell command verbatim on a real run."""
+    from vtuber.critic import check_self_repetition
+
+    script = _script_with(
+        stub_script,
+        **{"2": "Run npx hyperframes init my-video to scaffold it, which means no config.",
+           "4": "Just run npx hyperframes init my-video and judge it yourself."},
+    )
+    rep = check_self_repetition(script)
+    assert not rep.passed
+    assert rep.repeated_phrases
+
+
+def test_a_vacuous_limitation_blocks(stub_script):
+    from vtuber.critic import check_self_repetition
+
+    script = _script_with(
+        stub_script,
+        **{"3": "The catch is it has not been benchmarked for speed or performance yet."},
+    )
+    rep = check_self_repetition(script)
+    assert rep.vacuous_limitation
+
+
+def test_a_specific_limitation_passes(stub_script):
+    from vtuber.critic import check_self_repetition
+
+    script = _script_with(
+        stub_script,
+        **{"3": "The trade-off is the unix socket design, which means no remote control "
+                "without a tunnel of your own."},
+    )
+    assert not check_self_repetition(script).vacuous_limitation
+
+
+def test_a_script_with_no_reasoning_blocks(stub_script):
+    """Five paraphrased README sentences satisfied every other check."""
+    from vtuber.critic import check_self_repetition
+
+    script = _script_with(
+        stub_script,
+        **{str(i): f"The README states fact number {i} about the project plainly."
+           for i in range(5)},
+    )
+    rep = check_self_repetition(script)
+    assert rep.no_analysis
+
+
+def test_smart_quotes_are_folded_before_tts(stub_script):
+    """A curly apostrophe reaches the voice, the captions and the WER check."""
+    from vtuber.models import Scene
+
+    data = stub_script.scenes[0].model_dump()
+    data["narration"] = "It’s a tool — and it… works, which means less setup."
+    scene = Scene.model_validate(data)
+    assert "’" not in scene.narration
+    assert "—" not in scene.narration
+    assert "It's a tool - and it... works" in scene.narration

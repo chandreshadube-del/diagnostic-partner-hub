@@ -41,6 +41,23 @@ TECHNICAL_TOKEN_RE = re.compile(
 )
 
 
+#: Typographic characters a model emits freely. They reach the TTS engine, the
+#: captions and the WER comparison, so they are folded to ASCII at the door.
+_TYPOGRAPHIC = {
+    "\u2018": "'", "\u2019": "'", "\u201a": "'", "\u201b": "'",
+    "\u201c": '"', "\u201d": '"', "\u201e": '"',
+    "\u2013": "-", "\u2014": "-", "\u2015": "-", "\u2212": "-",
+    "\u2026": "...", "\u00a0": " ", "\u202f": " ", "\u2009": " ",
+    "\u00ad": "", "\ufeff": "",
+}
+
+
+def to_ascii_punctuation(text: str) -> str:
+    for src, dst in _TYPOGRAPHIC.items():
+        text = text.replace(src, dst)
+    return text
+
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -240,6 +257,11 @@ class Scene(Base):
                 payload["kind"] = template
                 data = {**data, "payload": payload}
         return data
+
+    @field_validator("narration")
+    @classmethod
+    def _plain_punctuation(cls, v: str) -> str:
+        return to_ascii_punctuation(v)
 
     @model_validator(mode="after")
     def _payload_matches_template(self) -> "Scene":

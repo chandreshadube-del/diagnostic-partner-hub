@@ -66,12 +66,20 @@ def _trim(text: str, n: int) -> str:
     return text if len(text) <= n else text[: n - 1].rstrip(" ,.;:") + "…"
 
 
-def _pad(text: str, target_words: int) -> str:
+#: Distinct per role: identical padding across scenes trips the repetition
+#: check, which is correct behaviour and should not be worked around.
+_TAILS = {
+    "hook": "Here is why that matters more than the star count suggests today.",
+    "what": "In practice that narrows who it suits, which is worth knowing early on.",
+    "detail": "That single line tells you whether it fits your existing stack or not.",
+    "limitation": "So treat the claims as claims until you have run it yourself once.",
+    "takeaway": "Judge it against the problem you actually have, not the pitch.",
+}
+
+
+def _pad(text: str, target_words: int, role: str = "what") -> str:
     """Stretch to roughly the asked-for length without inventing claims."""
-    filler = (
-        "That is worth checking against your own workload before you commit to it, "
-        "because the evidence here describes the project rather than measuring it."
-    ).split()
+    filler = _TAILS.get(role, _TAILS["what"]).split()
     words = text.split()
     i = 0
     while len(words) < target_words and i < len(filler):
@@ -167,7 +175,8 @@ def _scene(index: int, role: str, user: str) -> dict[str, Any]:
         "role": role,
         "template": template,
         "avatar_pose": pose,
-        "narration": _pad(narrations.get(role, narrations["what"]), _TARGETS.get(role, 24)),
+        "narration": _pad(narrations.get(role, narrations["what"]),
+                          _TARGETS.get(role, 24), role),
         "fact_ids": fact_ids.get(role, []),
         "payload": payloads[template],
     }

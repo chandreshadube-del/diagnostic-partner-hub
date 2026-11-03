@@ -52,8 +52,10 @@ ROLE_SPECS: tuple[RoleSpec, ...] = (
              "command, a mechanism, a design decision. Explain why it matters.",
              ("terminal_demo", "repo_overview"), "talk"),
     RoleSpec("limitation", 26,
-             "Give ONE real trade-off or limitation, or name something the evidence does "
-             "NOT establish. Be specific and fair, not dismissive.",
+             "Give ONE trade-off SPECIFIC to this project — a design decision with a cost, a "
+             "constraint it imposes, a case it does not suit. Do NOT say it lacks benchmarks, "
+             "is young, or may not suit everyone: that is true of nearly every project and "
+             "will be rejected. Be concrete and fair, not dismissive.",
              ("comparison", "architecture"), "think"),
     RoleSpec("takeaway", 20,
              "Say what the viewer should do or conclude. No call to subscribe.",
@@ -129,6 +131,7 @@ def _scene_user(
         "\n".join(f"  scene {s.index} ({s.role}): {s.narration}" for s in previous)
         or "  (nothing yet — this is the first scene)"
     )
+    spent = _spent_phrases(previous)
     payload = {
         "repo_full_name": packet.repo_full_name,
         "description": packet.topic,
@@ -140,6 +143,8 @@ def _scene_user(
         f"EVIDENCE (the only material you may use):\n"
         f"<payload>{json.dumps(payload, indent=1)}</payload>\n\n"
         f"Already said in earlier scenes — do not repeat it:\n{said}\n\n"
+        + (f"Do not reuse these, they are spent: {spent}\n\n" if spent else "")
+        + 
         f"Write scene {index}, role \"{spec.role}\".\n"
         f"{spec.guidance}\n\n"
         f"Length: about {spec.words} words. Write two sentences. "
@@ -151,11 +156,38 @@ def _scene_user(
         + ("fact_ids may be empty for this role.\n" if spec.role in ("hook", "takeaway")
            else "fact_ids must list at least one fact_id from the evidence above.\n")
         + (
-            'If you cite a fact marked "attributed": true, the narration MUST say whose '
-            'claim it is — "the maintainers say", "the README states", "the project '
-            'describes it as". Stating it as plain fact is rejected.\n'
+            'If you cite a fact marked "attributed": true, the narration must make clear '
+            "whose claim it is. VARY how you do that — an episode where every scene opens "
+            '"the maintainers say" is rejected. Other forms: "the README describes it as", '
+            '"by their own account", "the project positions this as", "according to the '
+            "release notes\", or fold it into the sentence (\"what they call a deterministic "
+            'renderer"). Stating an attributed claim as plain fact is also rejected.\n'
+        )
+        + (
+            "Add something the evidence does not say outright: what the fact implies, who it "
+            "suits, what it costs. Use a connective like \"which means\", \"the trade-off is\", "
+            "\"in practice\" or \"so if\". A scene that only restates a source is rejected.\n"
         )
     )
+
+
+def _spent_phrases(previous: list[Scene]) -> str:
+    """Commands and distinctive terms earlier scenes already used."""
+    import re as _re
+
+    out: list[str] = []
+    for scene in previous:
+        text = scene.narration + " " + " ".join(
+            str(v) for v in scene.payload.model_dump().values() if isinstance(v, str)
+        )
+        for tok in _re.findall(r"`[^`]+`|npx [\w.-]+|pip install [\w.-]+|[\w.-]+/[\w.-]+", text):
+            tok = tok.strip("`")
+            if tok not in out:
+                out.append(tok)
+        opening = " ".join(scene.narration.split()[:3])
+        if opening not in out:
+            out.append(opening)
+    return ", ".join(f'"{o}"' for o in out[:10])
 
 
 def _scene_schema() -> dict:
@@ -355,6 +387,22 @@ def _generate_angle(writer: LLM, scenes: list[Scene], packet: EvidencePacket) ->
     return angle
 
 
+def _offending_indices(rep, n_scenes: int) -> set[int]:  # noqa: ANN001 - CriticReport
+    """Scene indices named by a repetition report."""
+    import re as _re
+
+    out: set[int] = set()
+    for message in rep.repeated_openings + rep.repeated_phrases + rep.vacuous_limitation:
+        # "scene 3 repeats ..." / "(scenes [0, 1, 4])"
+        for m in _re.findall(r"scene (\d+)", message):
+            out.add(int(m))
+        for m in _re.findall(r"\[([\d, ]+)\]", message):
+            out.update(int(x) for x in m.split(",") if x.strip().isdigit())
+    if rep.no_analysis:
+        out.update({2, 3})  # detail and limitation carry the reasoning
+    return {i for i in out if 0 <= i < n_scenes}
+
+
 def generate(
     writer: LLM,
     packet: EvidencePacket,
@@ -374,6 +422,26 @@ def generate(
         )
         scenes.append(scene)
         used_templates.append(scene.template)
+
+    # Self-repetition can only be judged once the whole episode exists. Rewrite
+    # the offending scenes rather than discarding the episode.
+    from .critic import check_self_repetition
+
+    for sweep in range(2):
+        rep = check_self_repetition(Script.model_construct(scenes=scenes, angle="x" * 40))
+        if rep.passed:
+            break
+        offenders = _offending_indices(rep, len(scenes))
+        if not offenders:
+            break
+        notes.append(f"repetition sweep {sweep + 1}: rewriting scenes {sorted(offenders)}")
+        for index in sorted(offenders):
+            spec = ROLE_SPECS[index]
+            scenes[index] = _generate_scene(
+                writer, spec, index, packet, [s.template for s in scenes],
+                [s for i, s in enumerate(scenes) if i != index],
+                max_attempts=max_attempts, notes=notes,
+            )
 
     angle = _generate_angle(writer, scenes, packet)
     try:

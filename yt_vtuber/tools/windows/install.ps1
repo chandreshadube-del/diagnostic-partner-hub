@@ -29,8 +29,20 @@ if (-not (Test-Path ".venv")) {
 & .\.venv\Scripts\python.exe -m pip install --upgrade pip
 & .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 
+# The package lives under src\, so it has to go into the venv as well --
+# without this, `python -m vtuber` and the `vtuber` command do not exist.
+Write-Host "== vtuber package ==" -ForegroundColor Cyan
+& .\.venv\Scripts\python.exe -m pip install -e . --no-deps
+& .\.venv\Scripts\python.exe -c "import vtuber; print('vtuber', vtuber.__version__, 'importable')"
+if ($LASTEXITCODE -ne 0) { throw "the vtuber package did not install; see the pip output above" }
+
 Write-Host "== Chromium for Playwright ==" -ForegroundColor Cyan
 & .\.venv\Scripts\python.exe -m playwright install chromium
+if ($LASTEXITCODE -ne 0) { throw "playwright could not download Chromium" }
+& .\.venv\Scripts\python.exe -c "from playwright.sync_api import sync_playwright; from pathlib import Path
+with sync_playwright() as pw:
+    p = pw.chromium.executable_path
+print('chromium', p, 'exists' if Path(p).exists() else 'MISSING')"
 
 Write-Host "== FFmpeg ==" -ForegroundColor Cyan
 if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {

@@ -1,0 +1,17 @@
+pydantic==2.14.2
+pydantic-settings==2.16.2
+httpx==0.28.1
+tenacity==9.2.1
+platformdirs==4.14.3
+tomli-w==1.2.0
+playwright==1.64.1
+pillow==13.0.0
+numpy==2.5.4
+soundfile==0.14.0
+kokoro==0.9.4
+misaki[en]==0.9.4
+faster-whisper==1.2.1
+google-auth==2.62.1
+google-auth-oauthlib==1.5.0
+google-api-python-client==2.201.0
+keyring==25.7.0

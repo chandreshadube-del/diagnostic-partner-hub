@@ -45,9 +45,19 @@ Requires **Python 3.12** — `kokoro` and `misaki` declare `python <3.13`.
 powershell -ExecutionPolicy Bypass -File tools\windows\install.ps1
 ```
 
-That creates `.venv`, installs pinned dependencies, downloads Chromium for
-Playwright, points you at the official FFmpeg and Ollama installers, generates
-the avatar and runs the doctor. Then pull the models:
+That creates `.venv`, installs the pinned dependencies **and the `vtuber`
+package itself**, downloads Chromium for Playwright, points you at the official
+FFmpeg and Ollama installers, generates the avatar and runs the doctor.
+
+If `python -m vtuber` ever reports `No module named vtuber`, the editable
+install is missing — repair it with:
+
+```powershell
+.venv\Scripts\python -m pip install -e . --no-deps
+```
+
+FFmpeg installed through winget only reaches `PATH` in a **new** terminal, so
+open one before running the doctor. Then pull the models:
 
 ```powershell
 ollama pull qwen2.5:7b-instruct

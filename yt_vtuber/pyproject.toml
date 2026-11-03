@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vtuber-shorts"
+version = "0.1.0"
+description = "Local-first daily AI VTuber YouTube Shorts pipeline"
+requires-python = ">=3.12,<3.13"
+dynamic = ["dependencies"]
+
+[project.scripts]
+vtuber = "vtuber.cli:main"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+  "slow: full-length render, minutes of CPU",
+  "needs_models: requires Kokoro / faster-whisper weights on disk",
+  "needs_network: requires outbound api.github.com",
+]

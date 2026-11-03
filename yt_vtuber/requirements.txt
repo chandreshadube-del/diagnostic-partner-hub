@@ -1,0 +1,28 @@
+# Core pipeline (pinned). Python 3.12.x required: kokoro/misaki declare python <3.13.
+pydantic==2.14.2
+pydantic-settings==2.16.2
+httpx==0.28.1
+tenacity==9.2.1
+platformdirs==4.14.3
+tomli-w==1.2.0
+
+# Visuals / render
+playwright==1.64.1
+pillow==13.0.0
+
+# Audio
+numpy==2.5.4
+soundfile==0.14.0
+
+# Local TTS (Apache-2.0 code; model weights licence asserted at install time)
+kokoro==0.9.4
+misaki[en]==0.9.4
+
+# Local ASR (MIT)
+faster-whisper==1.2.1
+
+# YouTube upload
+google-auth==2.62.1
+google-auth-oauthlib==1.5.0
+google-api-python-client==2.201.0
+keyring==25.7.0

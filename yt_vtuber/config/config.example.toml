@@ -1,0 +1,63 @@
+# Copy to config/config.toml and edit. Secrets never belong in this file:
+# OAuth tokens live in the Windows Credential Manager (see `vtuber auth`),
+# and the OAuth client JSON lives outside the repository
+# (%APPDATA%\vtuber-shorts\client_secrets.json by default).
+
+[discovery]
+activity_window_days = 21
+cooldown_days = 120          # a repo used inside this window is never picked again
+min_stars = 300
+require_license = true
+
+[script]
+target_words_min = 100
+target_words_max = 135
+duration_min_s = 45.0
+duration_max_s = 60.0
+max_copied_run_words = 7     # longest verbatim run allowed from a source
+max_recent_similarity = 0.55
+
+[llm]
+backend = "ollama"           # local only; never a hosted API
+base_url = "http://127.0.0.1:11434"
+writer_model = "qwen2.5:7b-instruct"
+critic_model = "llama3.1:8b-instruct-q4_K_M"
+writer_model_low_ram = "qwen2.5:3b-instruct"
+critic_model_low_ram = "qwen2.5:3b-instruct"
+low_ram_gb = 12
+
+[tts]
+engine = "kokoro"
+model_repo = "hexgrad/Kokoro-82M"
+model_revision = ""          # set by `vtuber bootstrap`; empty blocks publishing
+voice = "af_heart"
+speed = 1.0
+enhance = true
+
+[asr]
+model = "small.en"
+compute_type = "int8"
+device = "cpu"
+wer_threshold = 0.05
+max_synthesis_attempts = 2
+
+[render]
+width = 1080
+height = 1920
+fps = 30
+crf = 20
+chromium_executable = ""     # blank = use Playwright's own download
+try_hwaccel = true           # probed, then falls back to libx264 on any failure
+
+[upload]
+enabled = false              # flip to true only after a confirmed canary
+publish_local_time = "18:00"
+timezone = "Asia/Kolkata"
+expected_channel_id = ""     # filled in from `vtuber auth`
+expected_channel_title = ""
+category_id = "28"           # Science & Technology
+canary_passed = false
+# Set only if current YouTube guidance requires an altered/synthetic-media
+# disclosure for this content. See README "Synthetic media disclosure".
+declare_synthetic_media = false
+self_declared_made_for_kids = false

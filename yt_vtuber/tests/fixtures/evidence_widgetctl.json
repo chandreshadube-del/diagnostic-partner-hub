@@ -1,0 +1,119 @@
+{
+  "topic": "a command line controller for widget fleets",
+  "repo_full_name": "acme/widgetctl",
+  "collected_at": "2026-11-01T09:00:00Z",
+  "source_refs": [
+    {
+      "ref_id": "repo",
+      "url": "https://api.github.com/repos/acme/widgetctl",
+      "source_type": "repository",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "title": "repo metadata",
+      "content_sha256": null
+    },
+    {
+      "ref_id": "readme",
+      "url": "https://api.github.com/repos/acme/widgetctl/readme",
+      "source_type": "readme",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "title": "README",
+      "content_sha256": null
+    },
+    {
+      "ref_id": "release",
+      "url": "https://github.com/acme/widgetctl/releases/latest",
+      "source_type": "release",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "title": "v2.4.1",
+      "content_sha256": null
+    },
+    {
+      "ref_id": "license",
+      "url": "https://github.com/acme/widgetctl/blob/HEAD/LICENSE",
+      "source_type": "license",
+      "retrieved_at": "2026-11-01T09:00:00Z",
+      "title": "LICENSE",
+      "content_sha256": null
+    }
+  ],
+  "facts": [
+    {
+      "fact_id": "f_identity",
+      "claim": "acme/widgetctl is a Python project on GitHub released under Apache-2.0.",
+      "source_refs": [
+        "repo"
+      ],
+      "attributed": false,
+      "quote": null
+    },
+    {
+      "fact_id": "f_purpose",
+      "claim": "The project describes itself as: a command line controller for widget fleets",
+      "source_refs": [
+        "repo"
+      ],
+      "attributed": true,
+      "quote": "a command line controller for widget fleets"
+    },
+    {
+      "fact_id": "f_activity",
+      "claim": "The default branch was last pushed on 2026-10-29.",
+      "source_refs": [
+        "repo"
+      ],
+      "attributed": false,
+      "quote": null
+    },
+    {
+      "fact_id": "f_license",
+      "claim": "acme/widgetctl is distributed under the Apache-2.0 licence.",
+      "source_refs": [
+        "license",
+        "repo"
+      ],
+      "attributed": false,
+      "quote": null
+    },
+    {
+      "fact_id": "f_release",
+      "claim": "The latest published release is v2.4.1, published 2026-10-28.",
+      "source_refs": [
+        "release"
+      ],
+      "attributed": false,
+      "quote": null
+    },
+    {
+      "fact_id": "f_readme_0",
+      "claim": "The README states: widgetctl talks to the fleet daemon over a local unix socket and never opens a network port.",
+      "source_refs": [
+        "readme"
+      ],
+      "attributed": true,
+      "quote": "widgetctl talks to the fleet daemon over a local unix socket and never opens a network port."
+    },
+    {
+      "fact_id": "f_readme_1",
+      "claim": "The README states: configuration is a single TOML file resolved from the working directory upwards.",
+      "source_refs": [
+        "readme"
+      ],
+      "attributed": true,
+      "quote": "configuration is a single TOML file resolved from the working directory upwards."
+    },
+    {
+      "fact_id": "f_usage_0",
+      "claim": "The README documents this shell usage: pip install widgetctl",
+      "source_refs": [
+        "readme"
+      ],
+      "attributed": true,
+      "quote": "pip install widgetctl"
+    }
+  ],
+  "license_spdx": "Apache-2.0",
+  "corpus": {
+    "readme": "widgetctl talks to the fleet daemon over a local unix socket and never opens a network port. configuration is a single TOML file resolved from the working directory upwards.",
+    "snippets": "pip install widgetctl"
+  }
+}

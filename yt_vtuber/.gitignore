@@ -1,0 +1,14 @@
+.venv/
+.venv-ci/
+__pycache__/
+*.pyc
+config/config.toml
+episodes/
+logs/
+state/
+*.mp4
+*.wav
+.pytest_cache/
+*.egg-info/
+build/
+dist/

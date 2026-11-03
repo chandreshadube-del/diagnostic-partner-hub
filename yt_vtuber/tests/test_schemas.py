@@ -120,3 +120,34 @@ def test_generation_error_carries_the_rejected_payload():
 
     exc = ScriptGenerationError("nope", last_raw={"scenes": []})
     assert exc.last_raw == {"scenes": []}
+
+
+def test_discriminator_is_required_in_the_json_schema():
+    """With a default, a schema-constrained model omits `kind` and the union breaks."""
+    schema = Script.model_json_schema()
+    for name in ("RepoOverviewPayload", "TerminalDemoPayload",
+                 "ComparisonPayload", "ArchitecturePayload"):
+        assert "kind" in schema["$defs"][name]["required"], name
+
+
+def test_missing_payload_kind_is_taken_from_the_template():
+    payload = {"repo": "w", "tagline": "t", "language": "Python",
+               "license": "MIT", "bullets": ["a", "b"]}
+    scene = Scene.model_validate(_scene(payload=payload))
+    assert scene.payload.kind == "repo_overview"
+
+
+def test_inferred_kind_does_not_hide_a_shape_mismatch():
+    """Filling kind from template must not let the wrong payload through."""
+    bad = _scene(template="comparison", payload={"repo": "w", "tagline": "t",
+                                                 "language": "Python", "license": "MIT",
+                                                 "bullets": ["a", "b"]})
+    with pytest.raises(ValidationError) as exc:
+        Scene.model_validate(bad)
+    assert "discriminator" not in str(exc.value).lower()
+
+
+def test_an_explicit_wrong_kind_is_still_rejected():
+    bad = _scene(template="comparison")
+    with pytest.raises(ValidationError):
+        Scene.model_validate(bad)

@@ -161,7 +161,7 @@ Line = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max
 
 
 class RepoOverviewPayload(Base):
-    kind: Literal["repo_overview"] = "repo_overview"
+    kind: Literal["repo_overview"]
     repo: Short
     tagline: Annotated[str, StringConstraints(min_length=1, max_length=110)]
     language: Short
@@ -170,7 +170,7 @@ class RepoOverviewPayload(Base):
 
 
 class TerminalDemoPayload(Base):
-    kind: Literal["terminal_demo"] = "terminal_demo"
+    kind: Literal["terminal_demo"]
     title: Short
     #: Shell lines. ``prompt`` lines are typed, ``out`` lines are printed.
     lines: Annotated[
@@ -180,7 +180,7 @@ class TerminalDemoPayload(Base):
 
 
 class ComparisonPayload(Base):
-    kind: Literal["comparison"] = "comparison"
+    kind: Literal["comparison"]
     title: Short
     left_label: Short
     right_label: Short
@@ -188,7 +188,7 @@ class ComparisonPayload(Base):
 
 
 class ArchitecturePayload(Base):
-    kind: Literal["architecture"] = "architecture"
+    kind: Literal["architecture"]
     title: Short
     #: Ordered stages drawn top to bottom; each may carry one short note.
     nodes: Annotated[list[tuple[Short, Annotated[str, StringConstraints(max_length=48)]]], Field(min_length=2, max_length=5)]
@@ -205,6 +205,13 @@ SCENE_ROLES: tuple[str, ...] = ("hook", "what", "detail", "limitation", "takeawa
 
 
 class Scene(Base):
+    """One scene. ``payload.kind`` must equal ``template``.
+
+    ``kind`` carries no default on purpose: with one, Pydantic marks it
+    optional in the JSON schema, and a schema-constrained model will leave it
+    out — which makes the discriminated union unresolvable.
+    """
+
     index: int = Field(ge=0, lt=16)
     role: SceneRole
     template: TemplateName
@@ -214,6 +221,25 @@ class Scene(Base):
     #: and the takeaway, which carry no standalone factual claim.
     fact_ids: list[str] = Field(default_factory=list)
     payload: ScenePayload
+
+    @model_validator(mode="before")
+    @classmethod
+    def _infer_payload_kind(cls, data: object) -> object:
+        """Fill in a missing ``payload.kind`` from the scene's own template.
+
+        The scene already states which template it uses, so this invents
+        nothing. A payload whose shape disagrees with that template still
+        fails below — it just fails with a useful message instead of
+        "Unable to extract tag using discriminator".
+        """
+        if isinstance(data, dict):
+            payload = data.get("payload")
+            template = data.get("template")
+            if isinstance(payload, dict) and template and not payload.get("kind"):
+                payload = dict(payload)
+                payload["kind"] = template
+                data = {**data, "payload": payload}
+        return data
 
     @model_validator(mode="after")
     def _payload_matches_template(self) -> "Scene":

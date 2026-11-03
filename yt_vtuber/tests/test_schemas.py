@@ -92,27 +92,54 @@ def test_retry_note_restates_the_broken_rule():
     """Three identical failures in a row meant the model was never told the rule."""
     from vtuber.script_gen import _retry_note
 
-    note = _retry_note("scenes.3.payload.repo_overview.bullets: List should have at least 2 items")
+    note = _retry_note("payload.repo_overview.bullets: List should have at least 2 items")
     assert "2 to 4 strings" in note
     assert "REJECTED" in note
 
 
-def test_retry_note_handles_several_violations():
+def test_retry_note_covers_the_discriminator():
     from vtuber.script_gen import _retry_note
 
-    note = _retry_note("scenes.0.payload.comparison.rows: too short; scenes.2.fact_ids: missing")
-    assert "2 to 4 [label, left, right] triples" in note
-    assert "at least one fact_id" in note
+    assert "payload.kind must equal" in _retry_note("payload: discriminator 'kind'")
 
 
-def test_schema_hint_is_itself_valid():
+def test_length_note_quotes_the_text_and_names_a_target():
+    """"Rewrite to fit" is not actionable for a 7B model; a count and the text are."""
+    from vtuber.script_gen import _length_note
+
+    note = _length_note("Too short.", 28)
+    assert "2 words" in note
+    assert "too longer" in note or "too short" in note.lower()
+    assert "about 28 words" in note
+    assert '"Too short."' in note
+
+
+def test_length_note_asks_to_shorten_when_over():
+    from vtuber.script_gen import _length_note
+
+    note = _length_note(" ".join(["word"] * 60), 20)
+    assert "too shorter" in note or "shorter" in note
+
+
+def test_per_scene_word_targets_sum_into_the_budget():
+    """The per-scene plan must add up to the configured episode budget."""
+    from vtuber.config import ScriptConfig
+    from vtuber.script_gen import ROLE_SPECS
+
+    cfg = ScriptConfig()
+    assert [r.role for r in ROLE_SPECS] == ["hook", "what", "detail", "limitation", "takeaway"]
+    total = sum(r.words for r in ROLE_SPECS)
+    assert cfg.target_words_min <= total <= cfg.target_words_max, total
+
+
+def test_every_scene_hint_is_a_valid_scene():
     """The example shown to the model must satisfy the schema it illustrates."""
     import json
 
-    from vtuber.script_gen import SCHEMA_HINT
-    from vtuber.models import Script
+    from vtuber.script_gen import ROLE_SPECS, _scene_hint
 
-    Script.model_validate(json.loads(SCHEMA_HINT.replace("...", "placeholder text here")))
+    for spec in ROLE_SPECS:
+        Scene.model_validate(json.loads(_scene_hint(spec)))
 
 
 def test_generation_error_carries_the_rejected_payload():
@@ -151,37 +178,3 @@ def test_an_explicit_wrong_kind_is_still_rejected():
     bad = _scene(template="comparison")
     with pytest.raises(ValidationError):
         Scene.model_validate(bad)
-
-
-def test_length_note_says_how_many_words_and_which_way(stub_script):
-    """"Rewrite to fit" is not actionable for a 7B model; a count and a direction is."""
-    from vtuber.config import ScriptConfig
-    from vtuber.script_gen import _length_note
-
-    cfg = ScriptConfig(target_words_min=200, target_words_max=240)
-    note = _length_note(stub_script, cfg)
-    assert "ADD about" in note
-    assert "scene 0 (hook)" in note
-    assert "same fact_ids" in note
-
-
-def test_length_note_asks_to_cut_when_too_long(stub_script):
-    from vtuber.config import ScriptConfig
-    from vtuber.script_gen import _length_note
-
-    cfg = ScriptConfig(target_words_min=20, target_words_max=30)
-    note = _length_note(stub_script, cfg)
-    assert "REMOVE about" in note
-
-
-def test_per_scene_word_targets_sum_into_the_budget():
-    """The per-scene numbers in the prompt must add up to the configured total."""
-    import re
-
-    from vtuber.config import ScriptConfig
-    from vtuber.script_gen import SYSTEM
-
-    cfg = ScriptConfig()
-    targets = [int(m) for m in re.findall(r"about (\d+) words", SYSTEM)]
-    assert len(targets) == 5, targets
-    assert cfg.target_words_min <= sum(targets) <= cfg.target_words_max, sum(targets)

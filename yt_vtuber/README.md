@@ -63,6 +63,19 @@ Copy and edit the config:
 copy config\config.example.toml config\config.toml
 ```
 
+Then pin the voice model. Uploads stay blocked until this is done, which is the
+point at which you read the model's licence:
+
+```powershell
+.venv\Scripts\python -m vtuber bootstrap
+```
+
+It resolves the current commit of `hexgrad/Kokoro-82M`, prints the licence it
+declares and a link to the licence file, and writes the revision into
+`config.toml`. It refuses to pin a model whose card declares no licence, or one
+outside a short permissive list, unless you pass `--accept-license <id>` to say
+you have read it.
+
 ## First run
 
 ```powershell
@@ -154,6 +167,7 @@ exists to keep it that way.
 | Command | What it does |
 |---|---|
 | `vtuber doctor` | inspect the machine, list blockers |
+| `vtuber bootstrap` | pin the TTS model revision after reading its licence |
 | `vtuber avatar` | regenerate the sprite sheet |
 | `vtuber run` | generate and validate one episode, no upload |
 | `vtuber rerender <id>` | re-render an existing episode |

@@ -223,3 +223,27 @@ def test_clickbait_title_is_refused(stub_episode, packet):
     stub_episode.script = type(stub_episode.script).model_validate(data)
     with pytest.raises(MetadataError, match="clickbait"):
         build_title(stub_episode, packet)
+
+
+def test_bootstrap_refuses_an_undeclared_license():
+    from vtuber.bootstrap import BootstrapError, ModelPin, check_license
+
+    pin = ModelPin(repo_id="x/y", revision="abc", license_id=None, license_url="u")
+    with pytest.raises(BootstrapError, match="declares no licence"):
+        check_license(pin)
+    check_license(pin, accept="apache-2.0")  # explicit human decision is honoured
+
+
+def test_bootstrap_refuses_a_restricted_license():
+    from vtuber.bootstrap import BootstrapError, ModelPin, check_license
+
+    pin = ModelPin(repo_id="x/y", revision="abc", license_id="cc-by-nc-4.0", license_url="u")
+    with pytest.raises(BootstrapError, match="does not pin"):
+        check_license(pin)
+
+
+def test_bootstrap_accepts_apache():
+    from vtuber.bootstrap import ModelPin, check_license
+
+    check_license(ModelPin(repo_id="x/y", revision="abc",
+                           license_id="apache-2.0", license_url="u"))

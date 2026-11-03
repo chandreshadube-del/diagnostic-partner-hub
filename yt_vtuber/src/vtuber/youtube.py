@@ -257,7 +257,15 @@ def find_by_title(svc, title: str, *, limit: int = 25) -> list[str]:  # noqa: AN
     """Reconcile an ambiguous upload: look for the video on the channel.
 
     Uses the authenticated account's own uploads playlist rather than public
-    search, so a private video is still found.
+    search, because a private video is not publicly searchable.
+
+    Caveat worth knowing before trusting this: how promptly a freshly inserted
+    private video appears in the uploads playlist is not something this project
+    has measured against the live API. A miss here does not immediately cause a
+    duplicate — ``publish`` only retries up to ``upload.max_upload_attempts``
+    and records every attempt in the ledger — but if you see a reconcile come
+    back empty for a video that does exist, check YouTube Studio before letting
+    the next run try again.
     """
     chan = svc.channels().list(part="contentDetails", mine=True).execute()
     items = chan.get("items") or []

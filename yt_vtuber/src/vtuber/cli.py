@@ -8,7 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import doctor, gates, pipeline, publish, scheduling, youtube
+from . import bootstrap, doctor, gates, pipeline, publish, scheduling, youtube
 from .config import load_config
 from .ledger import Ledger
 from .logging_setup import episode_handler, setup
@@ -45,6 +45,20 @@ def cmd_avatar(args: argparse.Namespace) -> int:
     return subprocess.run(
         [sys.executable, str(script), "--out", str(cfg.assets_dir / "avatar")], check=False
     ).returncode
+
+
+def cmd_bootstrap(args: argparse.Namespace) -> int:
+    cfg = _cfg(args)
+    pin = bootstrap.resolve_model(args.model_repo or cfg.tts.model_repo)
+    print(f"repo     {pin.repo_id}")
+    print(f"revision {pin.revision}")
+    print(f"licence  {pin.license_id or 'not declared'}  ({pin.license_url})")
+    bootstrap.check_license(pin, accept=args.accept_license)
+    path = Path(args.config) if args.config else cfg.project_root / "config" / "config.toml"
+    bootstrap.write_pin(path, pin)
+    print(f"\npinned in {path}. Uploads stay blocked until this is set, so this is "
+          f"the point at which you have read the licence.")
+    return 0
 
 
 def cmd_auth(args: argparse.Namespace) -> int:
@@ -268,6 +282,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     a = sub.add_parser("avatar", help="regenerate the avatar sprite sheet")
     a.set_defaults(func=cmd_avatar)
+
+    b = sub.add_parser("bootstrap", help="pin the TTS model revision after reading its licence")
+    b.add_argument("--model-repo")
+    b.add_argument("--accept-license", help="licence id you have read and accept")
+    b.set_defaults(func=cmd_bootstrap)
 
     au = sub.add_parser("auth", help="run the YouTube OAuth flow and print the channel")
     au.set_defaults(func=cmd_auth)

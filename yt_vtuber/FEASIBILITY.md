@@ -82,16 +82,18 @@ part-way through the real encode, falls back to `libx264`. Tested here:
 
 ## What was actually run and verified in this session
 
-* **87 automated tests pass**, including real Chromium renders, a real FFmpeg
+* **90 automated tests pass**, including real Chromium renders, a real FFmpeg
   encode and real ffprobe/blackdetect QC. `pytest -q` from the project root.
   Render and encode tests skip cleanly when Chromium or FFmpeg is absent.
 * **A complete 1080x1920 / 30 fps / 50.5 s MP4 was produced end to end**
-  (`tools/e2e_prototype.py`): 1,515 frames rendered in 227 s on 4 CPU cores
-  (~150 ms/frame), encoded with `libx264` + `aac`. Every render and metadata
-  gate passed on the finished file — dimensions, frame rate, duration, full
-  decode, audio level (-14.9 dBFS mean), no blank frames, no layout overflow,
-  title length, source links in the description, and every numeric claim
-  traceable to the evidence.
+  (`tools/e2e_prototype.py`, 311 s total): 1,515 frames rendered in ~290 s on
+  4 CPU cores (~195 ms/frame), encoded h264 + aac (2.5 MB, 48 kHz stereo).
+  **11 of 13 gates passed**; the only two failures were the intended publish
+  blocks. ffprobe confirmed 1080x1920, 30.0 fps, 50.5 s, 1,515 frames; the
+  file decoded clean end to end; `blackdetect` found nothing; audio measured
+  -14.9 dBFS mean / -4.5 dBFS peak; the twelve sampled frames had pixel
+  standard deviations of 25-29 (a blank frame reads below 3); and the layout
+  sampler reported no overflow or clipping at any sampled time.
 * **The two publish gates blocked it**, as designed: `publish.real_generator`
   (stub writer) and `publish.real_tts` (stub voice). Nothing could have been
   uploaded from this run.

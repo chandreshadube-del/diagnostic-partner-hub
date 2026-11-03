@@ -49,5 +49,9 @@ if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) {
 Write-Host "== avatar ==" -ForegroundColor Cyan
 & .\.venv\Scripts\python.exe tools\make_avatar.py
 
+Write-Host "== next steps ==" -ForegroundColor Cyan
+Write-Host "  copy config\config.example.toml config\config.toml" -ForegroundColor Yellow
+Write-Host "  .venv\Scripts\python -m vtuber bootstrap   # pins the voice model, shows its licence" -ForegroundColor Yellow
+
 Write-Host "== doctor ==" -ForegroundColor Cyan
 & .\.venv\Scripts\python.exe -m vtuber doctor

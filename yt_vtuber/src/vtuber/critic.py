@@ -41,6 +41,10 @@ ATTRIBUTION_MARKERS = (
     "docs say", "documentation says", "says it",
 )
 
+#: Longest verbatim run a scene may share with a source before it counts as
+#: copying. ``ScriptConfig.max_copied_run_words`` overrides it per run.
+DEFAULT_MAX_COPIED_RUN = 7
+
 _WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+/-]*")
 _NUMBER = re.compile(r"\b\d[\d,]*(?:\.\d+)?\b")
 
@@ -184,7 +188,13 @@ def _evidence_pools(packet: EvidencePacket) -> tuple[set[str], set[str]]:
     return _token_pool(texts), set(_NUMBER.findall(" ".join(texts)))
 
 
-def verify_scene(scene, packet: EvidencePacket, rep: CriticReport | None = None) -> CriticReport:  # noqa: ANN001
+def verify_scene(  # noqa: ANN001
+    scene,
+    packet: EvidencePacket,
+    rep: CriticReport | None = None,
+    *,
+    max_copied_run: int = DEFAULT_MAX_COPIED_RUN,
+) -> CriticReport:
     """Check one scene. Used by the generator's retry loop and by the full pass.
 
     Running these per scene is what lets a bad scene be rewritten on its own;
@@ -230,6 +240,14 @@ def verify_scene(scene, packet: EvidencePacket, rep: CriticReport | None = None)
             rep.unattributed_claims.append(
                 f"scene {scene.index} rests on an attributed claim but voices it as fact"
             )
+
+    # Catching a lifted sentence here rather than after all five scenes exist
+    # means the offending scene is rewritten on its own.
+    run_len, run_text = longest_copied_run_in(scene.narration, packet)
+    if run_len > max_copied_run:
+        rep.copied_runs.append(
+            f"scene {scene.index}: {run_len} consecutive words copied from a source: {run_text!r}"
+        )
     return rep
 
 
@@ -292,11 +310,13 @@ def check_self_repetition(script: Script) -> CriticReport:
     return rep
 
 
-def verify_claims(script: Script, packet: EvidencePacket) -> CriticReport:
+def verify_claims(
+    script: Script, packet: EvidencePacket, *, max_copied_run: int = DEFAULT_MAX_COPIED_RUN
+) -> CriticReport:
     """Deterministic verification of the whole script against the evidence packet."""
     rep = CriticReport()
     for scene in script.scenes:
-        verify_scene(scene, packet, rep)
+        verify_scene(scene, packet, rep, max_copied_run=max_copied_run)
     repetition = check_self_repetition(script)
     rep.repeated_openings = repetition.repeated_openings
     rep.repeated_phrases = repetition.repeated_phrases
@@ -325,9 +345,9 @@ def _payload_text(scene) -> str:  # noqa: ANN001 - duck-typed scene payload
     return " ".join(out)
 
 
-def longest_copied_run(script: Script, packet: EvidencePacket) -> tuple[int, str]:
-    """Longest run of consecutive words shared with any source document."""
-    spoken = [_norm(w) for w in _WORD.findall(script.narration)]
+def longest_copied_run_in(text: str, packet: EvidencePacket) -> tuple[int, str]:
+    """Longest run of consecutive words ``text`` shares with any source document."""
+    spoken = [_norm(w) for w in _WORD.findall(text)]
     best, best_text = 0, ""
     for body in packet.corpus.values():
         src = [_norm(w) for w in _WORD.findall(body)]
@@ -350,6 +370,11 @@ def longest_copied_run(script: Script, packet: EvidencePacket) -> tuple[int, str
                 best, best_text = run, " ".join(spoken[i : i + run])
             i += 1
     return best, best_text
+
+
+def longest_copied_run(script: Script, packet: EvidencePacket) -> tuple[int, str]:
+    """Longest run of consecutive words the whole script shares with a source."""
+    return longest_copied_run_in(script.narration, packet)
 
 
 def _contains(haystack: list[str], needle: list[str]) -> bool:
@@ -378,11 +403,7 @@ def run(
     cfg: ScriptConfig,
     critic_llm: LLM | None = None,
 ) -> CriticReport:
-    rep = verify_claims(script, packet)
-
-    run_len, run_text = longest_copied_run(script, packet)
-    if run_len > cfg.max_copied_run_words:
-        rep.copied_runs.append(f"{run_len} consecutive words copied from source: {run_text!r}")
+    rep = verify_claims(script, packet, max_copied_run=cfg.max_copied_run_words)
 
     if critic_llm is not None:
         import json

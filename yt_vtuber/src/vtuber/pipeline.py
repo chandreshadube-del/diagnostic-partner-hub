@@ -206,8 +206,10 @@ def stage_script(ctx: RunContext, episode: Episode, packet: EvidencePacket) -> E
         )
         raise PipelineFailed("; ".join(f"{c.name}: {c.detail}" for c in failures))
 
-    ctx.ledger.record_script(episode.episode_id, script.narration, layout_signature(script))
-    ctx.ledger.record_topic(episode.repo_full_name, episode.episode_id)
+    # The ledger is NOT written here. A topic recorded at script time is burnt
+    # for the whole cooldown even if the render later fails, so the repo is
+    # locked out for months having produced nothing. It is recorded once the
+    # episode is validated — see stage_validate.
     ctx.store.advance(episode, State.RESEARCHED)
     ctx.store.advance(episode, State.SCRIPTED)
     return episode
@@ -409,6 +411,15 @@ def stage_validate(ctx: RunContext, episode: Episode, packet: EvidencePacket) ->
     )
     if not report.passed:
         raise PipelineFailed("; ".join(f"{c.name}: {c.detail}" for c in report.failures))
+
+    # Only now does this episode claim its topic and its layout: it exists as a
+    # finished, validated video, so repeating either would be a real repeat.
+    if episode.script is not None:
+        ctx.ledger.record_script(
+            episode.episode_id, episode.script.narration, layout_signature(episode.script)
+        )
+    ctx.ledger.record_topic(episode.repo_full_name, episode.episode_id)
+
     ctx.store.advance(episode, State.VALIDATED)
     return episode
 

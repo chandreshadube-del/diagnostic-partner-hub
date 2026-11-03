@@ -52,10 +52,10 @@ ROLE_SPECS: tuple[RoleSpec, ...] = (
              "command, a mechanism, a design decision. Explain why it matters.",
              ("terminal_demo", "repo_overview"), "talk"),
     RoleSpec("limitation", 26,
-             "Give ONE trade-off SPECIFIC to this project — a design decision with a cost, a "
-             "constraint it imposes, a case it does not suit. Do NOT say it lacks benchmarks, "
-             "is young, or may not suit everyone: that is true of nearly every project and "
-             "will be rejected. Be concrete and fair, not dismissive.",
+             "Name ONE thing the evidence does NOT settle, or one group this clearly does not "
+             "suit, and say so plainly. Prefer 'the evidence does not show X' over guessing "
+             "that it cannot do X — you do not know that. Do NOT say it lacks benchmarks, is "
+             "young, or may not suit everyone: true of nearly every project, and rejected.",
              ("comparison", "architecture"), "think"),
     RoleSpec("takeaway", 20,
              "Say what the viewer should do or conclude. No call to subscribe.",
@@ -76,7 +76,10 @@ Hard rules:
 - A fact marked "attributed": true is the project's own claim about itself. Voice it that way
   ("the maintainers say", "the README states"), never as a verified result.
 - Invent no numbers, benchmarks, prices, dates, version strings or feature claims.
-- Add your own explanation or judgement. Do not paraphrase the README line by line.
+- Add your own explanation or judgement. Do not paraphrase the README line by line, and never
+  copy a run of words from the evidence verbatim — say it in your own words.
+- Never infer a capability or a limitation the evidence does not mention. Saying what the
+  evidence does not establish is good; guessing what the software cannot do is not.
 - Narration must be speakable: plain words, no markdown, no emoji, no URLs, no brackets.
 - Spell technical names exactly as the evidence spells them.
 
@@ -164,9 +167,17 @@ def _scene_user(
             'renderer"). Stating an attributed claim as plain fact is also rejected.\n'
         )
         + (
-            "Add something the evidence does not say outright: what the fact implies, who it "
-            "suits, what it costs. Use a connective like \"which means\", \"the trade-off is\", "
-            "\"in practice\" or \"so if\". A scene that only restates a source is rejected.\n"
+            "Add a judgement of your own, but keep it to things you can defend from the "
+            "evidence:\n"
+            "  - who the project suits or does not suit, given what it says it does\n"
+            "  - what the evidence establishes versus what it only asserts\n"
+            "  - what a reader would still need to find out\n"
+            "Do NOT guess at capabilities, performance or limitations the evidence does not "
+            'mention. "Deterministic, which means it may not support real-time adjustments" '
+            "is exactly the kind of invented inference that is rejected: the evidence says "
+            "deterministic and nothing about real-time adjustments.\n"
+            "Use a connective like \"which means\", \"the trade-off is\", \"in practice\" or "
+            "\"so if\". A scene that only restates a source is rejected.\n"
         )
     )
 
@@ -222,6 +233,10 @@ def _critic_note(report, narration: str) -> str:  # noqa: ANN001 - CriticReport
         )
     for num in report.unsupported_numbers:
         lines.append(f"{num} is a number the evidence does not support. Remove it.")
+    for run in report.copied_runs:
+        lines.append(
+            f"{run} — put that in your own words instead of lifting the source's wording."
+        )
     for item in report.filler:
         lines.append(f"Remove this filler — {item}.")
     for item in report.missing_citations:
@@ -282,6 +297,7 @@ def _generate_scene(
     previous: list[Scene],
     *,
     max_attempts: int,
+    max_copied_run: int,
     notes: list[str],
 ) -> Scene:
     base = _scene_user(spec, index, packet, used_templates, previous)
@@ -320,7 +336,7 @@ def _generate_scene(
         # that cites a README claim without attribution, or names something the
         # evidence never mentions, is rewritten on its own rather than taking
         # four good scenes down with it.
-        report = verify_scene(scene, packet)
+        report = verify_scene(scene, packet, max_copied_run=max_copied_run)
         if not report.passed:
             last_error = "; ".join(report.blocking[:4])
             notes.append(f"scene {index} attempt {attempt}: critic: {last_error}")
@@ -418,7 +434,7 @@ def generate(
     for index, spec in enumerate(ROLE_SPECS):
         scene = _generate_scene(
             writer, spec, index, packet, used_templates, scenes,
-            max_attempts=max_attempts, notes=notes,
+            max_attempts=max_attempts, max_copied_run=cfg.max_copied_run_words, notes=notes,
         )
         scenes.append(scene)
         used_templates.append(scene.template)
@@ -440,7 +456,8 @@ def generate(
             scenes[index] = _generate_scene(
                 writer, spec, index, packet, [s.template for s in scenes],
                 [s for i, s in enumerate(scenes) if i != index],
-                max_attempts=max_attempts, notes=notes,
+                max_attempts=max_attempts, max_copied_run=cfg.max_copied_run_words,
+                notes=notes,
             )
 
     angle = _generate_angle(writer, scenes, packet)

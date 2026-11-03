@@ -30,12 +30,19 @@ Hard rules:
 - Keep every narration line speakable: plain words, no markdown, no emoji, no URLs, no bracketed asides.
 - Spell technical names exactly as the evidence spells them.
 
-Structure, exactly five scenes in this order:
-0 hook       - one sentence that states the specific thing worth knowing. No "in this video".
-1 what       - what the project does and for whom.
-2 detail     - one concrete technical detail or use case, from the evidence.
-3 limitation - one real trade-off, limitation, or thing the evidence does NOT establish.
-4 takeaway   - what the viewer should do or conclude. No call to subscribe.
+Structure, exactly five scenes in this order. The word count after each role is the
+length its narration should be — a whole episode that is too short gets rejected, and
+counting across five fields at the end does not work, so write each one to its target:
+
+0 hook       (about 18 words) - one sentence stating the specific thing worth knowing.
+                               No "in this video".
+1 what       (about 28 words) - what the project does and for whom.
+2 detail     (about 30 words) - one concrete technical detail or use case, from the evidence.
+3 limitation (about 26 words) - one real trade-off, limitation, or thing the evidence does
+                               NOT establish.
+4 takeaway   (about 20 words) - what the viewer should do or conclude. No call to subscribe.
+
+Two full sentences per scene is usually right; one short sentence is too few.
 
 Templates. Use at least THREE distinct ones across the five scenes. Item counts are
 hard minimums and maximums — a list with too few entries is rejected outright:
@@ -108,7 +115,9 @@ def _evidence_block(packet: EvidencePacket, cfg: ScriptConfig) -> str:
     return (
         f"EVIDENCE (the only material you may use):\n<payload>{json.dumps(payload, indent=1)}</payload>\n\n"
         f"Total spoken words across all five narration fields must be between "
-        f"{cfg.target_words_min} and {cfg.target_words_max}."
+        f"{cfg.target_words_min} and {cfg.target_words_max}. Aim for "
+        f"{(cfg.target_words_min + cfg.target_words_max) // 2}: write roughly 18 / 28 / 30 / 26 / 20 "
+        f"words for scenes 0 to 4. Short, clipped narration fails this check."
     )
 
 
@@ -163,11 +172,7 @@ def generate(
         if not (cfg.target_words_min <= words <= cfg.target_words_max):
             last_error = f"{words} spoken words, need {cfg.target_words_min}-{cfg.target_words_max}"
             notes.append(f"attempt {attempt}: {last_error}")
-            user = (
-                _evidence_block(packet, cfg)
-                + f"\n\nYour previous answer had {last_error}. Keep the same five scenes and the "
-                  f"same facts; only tighten or expand the narration wording."
-            )
+            user = _evidence_block(packet, cfg) + _length_note(script, cfg)
             continue
         notes.append(f"accepted on attempt {attempt} ({words} words)")
         return script, notes
@@ -175,6 +180,29 @@ def generate(
         f"no valid script after {max_attempts} attempts: {last_error}",
         last_raw=last_raw,
     ) from None
+
+
+def _length_note(script: Script, cfg: ScriptConfig) -> str:
+    """Say how many words to add or cut, and to which scenes.
+
+    "Rewrite to fit" is not actionable for a small model; a per-scene count
+    and a direction is.
+    """
+    target = (cfg.target_words_min + cfg.target_words_max) // 2
+    delta = target - script.word_count
+    per_scene = "\n".join(
+        f"  scene {sc.index} ({sc.role}): {len(sc.narration.split())} words — {sc.narration}"
+        for sc in script.scenes
+    )
+    verb = "ADD" if delta > 0 else "REMOVE"
+    return (
+        f"\n\nYour previous answer was {script.word_count} words, which is outside "
+        f"{cfg.target_words_min}-{cfg.target_words_max}. Here is what you wrote:\n{per_scene}\n\n"
+        f"Keep the same five scenes, the same templates and the same fact_ids. "
+        f"{verb} about {abs(delta)} words of real content spread across the narration fields, "
+        f"so the total lands near {target}. Expand by explaining a point further, never by "
+        f"adding filler or claims the evidence does not support."
+    )
 
 
 def _retry_note(errors: str) -> str:

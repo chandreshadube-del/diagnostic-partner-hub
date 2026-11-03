@@ -34,7 +34,14 @@ class StubLLM:
         self.role = role
         self.name = f"stub:{role}"
 
-    def json_complete(self, system: str, user: str, *, schema_hint: str) -> dict[str, Any]:
+    def json_complete(
+        self,
+        system: str,
+        user: str,
+        *,
+        schema_hint: str,
+        schema: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         payload = _parse_user(user)
         if self.role == "writer":
             return _write(payload)

@@ -30,7 +30,14 @@ class LLMUnavailable(LLMError):
 class LLM(Protocol):
     name: str
 
-    def json_complete(self, system: str, user: str, *, schema_hint: str) -> dict[str, Any]: ...
+    def json_complete(
+        self,
+        system: str,
+        user: str,
+        *,
+        schema_hint: str,
+        schema: dict[str, Any] | None = None,
+    ) -> dict[str, Any]: ...
 
 
 class OllamaLLM:
@@ -70,24 +77,49 @@ class OllamaLLM:
         wait=wait_exponential(multiplier=2, min=2, max=10),
         retry=retry_if_exception_type((httpx.TransportError, LLMError)),
     )
-    def json_complete(self, system: str, user: str, *, schema_hint: str) -> dict[str, Any]:
-        payload = {
-            "model": self.model,
-            "stream": False,
-            "format": "json",
-            "options": {
-                "temperature": self.cfg.temperature,
-                "num_ctx": self.cfg.num_ctx,
-            },
-            "messages": [
-                {"role": "system", "content": f"{system}\n\nReturn ONLY JSON matching:\n{schema_hint}"},
-                {"role": "user", "content": user},
-            ],
-        }
-        try:
-            r = self._client.post("/api/chat", json=payload)
-        except httpx.HTTPError as exc:
-            raise LLMUnavailable(f"Ollama request failed: {exc}") from exc
+    def json_complete(
+        self,
+        system: str,
+        user: str,
+        *,
+        schema_hint: str,
+        schema: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Ask for JSON, constrained by ``schema`` where the server supports it.
+
+        Passing a JSON Schema as ``format`` makes Ollama decode against a
+        grammar, so a required field cannot simply be omitted. Prose
+        instructions do not give that guarantee, and a 7B model will drop
+        fields however firmly it is asked not to. If the server rejects the
+        schema, this falls back to plain JSON mode once rather than failing the
+        attempt outright.
+        """
+        for fmt in ([schema, "json"] if schema is not None else ["json"]):
+            payload = {
+                "model": self.model,
+                "stream": False,
+                "format": fmt,
+                "options": {
+                    "temperature": self.cfg.temperature,
+                    "num_ctx": self.cfg.num_ctx,
+                },
+                "messages": [
+                    {"role": "system",
+                     "content": f"{system}\n\nReturn ONLY JSON matching:\n{schema_hint}"},
+                    {"role": "user", "content": user},
+                ],
+            }
+            try:
+                r = self._client.post("/api/chat", json=payload)
+            except httpx.HTTPError as exc:
+                raise LLMUnavailable(f"Ollama request failed: {exc}") from exc
+            if r.status_code == 400 and fmt != "json":
+                log.warning(
+                    "Ollama rejected the JSON schema (%s); falling back to plain JSON mode",
+                    r.text[:200].strip(),
+                )
+                continue
+            break
         if r.status_code >= 400:
             raise LLMError(f"Ollama {r.status_code}: {r.text[:300]}")
         content = (r.json().get("message") or {}).get("content", "")

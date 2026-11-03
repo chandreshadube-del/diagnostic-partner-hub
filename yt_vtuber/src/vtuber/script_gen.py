@@ -143,7 +143,9 @@ def generate(
     last_raw: dict[str, Any] | None = None
     for attempt in range(1, max_attempts + 1):
         try:
-            raw: dict[str, Any] = writer.json_complete(SYSTEM, user, schema_hint=SCHEMA_HINT)
+            raw: dict[str, Any] = writer.json_complete(
+                SYSTEM, user, schema_hint=SCHEMA_HINT, schema=Script.model_json_schema()
+            )
         except LLMError as exc:
             last_error = f"generation call failed: {exc}"
             notes.append(f"attempt {attempt}: {last_error}")

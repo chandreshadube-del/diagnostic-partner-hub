@@ -276,6 +276,24 @@ def run(
                 LLM_CRITIC_SYSTEM,
                 f"<payload>{json.dumps(payload)}</payload>",
                 schema_hint='{"verdict":"pass","issues":[]}',
+                schema={
+                    "type": "object",
+                    "properties": {
+                        "verdict": {"type": "string", "enum": ["pass", "revise"]},
+                        "issues": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "scene": {"type": "integer"},
+                                    "problem": {"type": "string"},
+                                },
+                                "required": ["scene", "problem"],
+                            },
+                        },
+                    },
+                    "required": ["verdict", "issues"],
+                },
             )
             rep.llm_verdict = str(out.get("verdict", "unknown"))
             for issue in out.get("issues", []) or []:

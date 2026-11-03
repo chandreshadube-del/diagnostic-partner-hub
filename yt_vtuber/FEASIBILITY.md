@@ -34,11 +34,26 @@ been executed on Windows.
 | Playwright | 1.64.1 (Python), driven with an explicit `executable_path` |
 | GPU | none exposed; everything below is CPU-only |
 
-### Not measurable from here
+### Measured on the target Windows machine (after setup)
 
-The Windows machine's CPU, RAM and GPU are unknown. `vtuber doctor` prints all
-of them on the target machine and refuses to proceed if a blocking requirement
-is missing; run it first.
+`vtuber doctor` reported no blocking problems:
+
+| | |
+|---|---|
+| OS | Windows 11 (10.0.26300) |
+| CPU | 24 logical cores |
+| RAM | 15.7 GB |
+| Disk | 120 GB free |
+| Python | 3.12.1, in the project venv |
+| FFmpeg / ffprobe | 9.0.2 (Gyan full build, via winget) |
+| Chromium | Playwright build 1248 |
+| Ollama | 0.40.14 |
+| GPU | not separately probed; the pipeline does not require one |
+
+With 15.7 GB the writer and critic stay on the 7B/8B tags. Ollama keeps a model
+resident for five minutes after use, so both (~4.7 GB + ~4.9 GB) can be in
+memory at once. If that becomes a problem, raising `llm.low_ram_gb` above 15
+switches both to 3B tags.
 
 ## Runtime choices, and why
 
@@ -53,7 +68,7 @@ with that explanation if it does not find one.
 
 | Component | Choice | Licence | Verified how |
 |---|---|---|---|
-| Writer / critic LLM | Ollama on `127.0.0.1:11434`, `qwen2.5:7b-instruct` + `llama3.1:8b-instruct-q4_K_M`, downgraded to 3B tags below 12 GB RAM | per-model, on Ollama | **[UNVERIFIED]** — the tags must be confirmed with `ollama pull` on the target machine; `OllamaLLM.ensure_model` fails loudly if a tag is absent |
+| Writer / critic LLM | Ollama on `127.0.0.1:11434`, `qwen2.5:7b-instruct` + `llama3.1:8b-instruct-q4_K_M`, downgraded to 3B tags below 12 GB RAM | per-model, on Ollama | both tags pulled successfully on the target machine (Ollama 0.40.14): 4.7 GB and 4.9 GB respectively |
 | TTS | Kokoro-82M via `kokoro==0.9.4` | package: Apache-2.0 | PyPI metadata + the project's own `LICENSE` |
 | G2P | `misaki[en]==0.9.4`, which pulls `espeakng-loader` | Apache-2.0 | PyPI metadata |
 | ASR | `faster-whisper==1.2.1`, `small.en`, `int8`, CPU | MIT | PyPI metadata + `SYSTRAN/faster-whisper` `LICENSE` |
@@ -62,12 +77,13 @@ with that explanation if it does not find one.
 `espeakng-loader` bundles the espeak-ng data, so no separate system install of
 espeak-ng is needed on Windows.
 
-**[UNVERIFIED] Kokoro-82M model-weights licence.** `huggingface.co` does not
-resolve from this container, so the weight licence on `hexgrad/Kokoro-82M` could
-not be read. The package code is Apache-2.0; that is not the same statement.
-`tts.model_revision` is empty by default and `gates.check_tts_engine` blocks any
-upload while it stays empty, so the first real run forces you to pin a revision
-and read the licence at that moment.
+**Kokoro-82M model-weights licence: Apache-2.0.** This could not be checked from
+the build container (`huggingface.co` does not resolve there), so it was left
+unverified until `vtuber bootstrap` ran on the target machine. It reports the
+model card declaring `apache-2.0`, and pinned revision
+`f3ff3571791e39611d31c381e3a41a3af07b4987`. `tts.model_revision` is empty by
+default and `gates.check_tts_engine` blocks any upload while it stays empty, so
+pinning is the step at which a human reads the licence.
 
 No hosted model API is used anywhere, and no project data leaves the machine.
 

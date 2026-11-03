@@ -38,6 +38,10 @@ class Transient(GitHubError):
     pass
 
 
+class BadCredentials(GitHubError):
+    """The token we sent was rejected — expired, revoked or regenerated."""
+
+
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -88,6 +92,13 @@ class GitHub:
             raise RateLimited(f"rate limited; resets at {r.headers.get('x-ratelimit-reset')}")
         if r.status_code >= 500:
             raise Transient(f"{r.status_code} from {url}")
+        if r.status_code == 401:
+            raise BadCredentials(
+                "GitHub rejected the stored token (401 Bad credentials). It has expired, "
+                "been revoked, or been regenerated since it was saved. Store the current "
+                "value with `vtuber token`, or drop it with `vtuber token --delete` to fall "
+                "back to unauthenticated access."
+            )
         if r.status_code == 404:
             raise GitHubError(f"404 {url}")
         if r.status_code >= 400:

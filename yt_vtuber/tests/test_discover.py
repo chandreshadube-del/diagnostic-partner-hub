@@ -133,3 +133,47 @@ def test_a_genuine_404_still_means_no_release():
         transport=httpx.MockTransport(lambda r: httpx.Response(404, json={"message": "Not Found"}))
     )
     assert gh.latest_release("owner/repo") is None
+
+
+def test_a_rejected_token_is_named_not_a_generic_error():
+    import httpx
+
+    from vtuber.github_api import BadCredentials, GitHub
+
+    gh = GitHub(token="stale")
+    gh._client = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda r: httpx.Response(401, json={"message": "Bad credentials"})
+        )
+    )
+    with pytest.raises(BadCredentials, match="vtuber token"):
+        gh.rate_limit()
+
+
+def test_a_rejected_token_skips_the_day_rather_than_crashing(cfg, monkeypatch):
+    """An expired token on the 17:00 scheduled run must not abort with a traceback."""
+    from vtuber import pipeline
+    from vtuber.github_api import BadCredentials
+    from vtuber.ledger import Ledger
+    from vtuber.state import EpisodeStore
+
+    class StaleTokenGitHub:
+        authenticated = True
+
+        def remaining(self):  # noqa: ANN202
+            raise BadCredentials("GitHub rejected the stored token ... `vtuber token`")
+
+        def __enter__(self):  # noqa: ANN204
+            return self
+
+        def __exit__(self, *exc):  # noqa: ANN002, ANN204
+            return None
+
+    monkeypatch.setattr(pipeline, "GitHub", StaleTokenGitHub)
+    ctx = pipeline.RunContext(
+        cfg=cfg,
+        store=EpisodeStore(cfg.episodes_dir),
+        ledger=Ledger(cfg.state_dir / "l.sqlite3"),
+    )
+    with pytest.raises(pipeline.PipelineSkip, match="rejected the stored token"):
+        pipeline.stage_discover(ctx)

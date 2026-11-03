@@ -22,7 +22,7 @@ from .audio_io import duration_s as wav_duration
 from .config import PipelineConfig
 from .discover import Candidate, discover
 from .evidence import ThinEvidence, collect
-from .github_api import GitHub, GitHubError
+from .github_api import BadCredentials, GitHub, GitHubError
 from .ledger import Ledger
 from .models import (
     AudioVerification,
@@ -98,7 +98,12 @@ def stage_discover(ctx: RunContext, *, force_repo: str | None = None) -> tuple[E
     cfg = ctx.cfg
     excluded = ctx.ledger.recently_used(cfg.discovery.cooldown_days)
     with GitHub() as gh:
-        core, search = gh.remaining()
+        try:
+            core, search = gh.remaining()
+        except BadCredentials as exc:
+            # An expired token a year from now must skip the day with an
+            # explanation, not abort the scheduled run with a traceback.
+            raise PipelineSkip(str(exc)) from exc
         if not gh.authenticated:
             log.warning(
                 "no GitHub token: unauthenticated quota is 60 requests/hour "

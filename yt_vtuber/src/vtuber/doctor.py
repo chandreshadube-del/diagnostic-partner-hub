@@ -140,7 +140,13 @@ def run(project_root: Path | None = None) -> Report:
             blocking=False,
         ))
     except Exception as exc:  # noqa: BLE001
-        add(Finding("github.quota", False, f"could not reach api.github.com: {exc}", blocking=False))
+        from .github_api import BadCredentials
+
+        detail = (
+            str(exc) if isinstance(exc, BadCredentials)
+            else f"could not reach api.github.com: {exc}"
+        )
+        add(Finding("github.quota", False, detail, blocking=False))
 
     free_gb = shutil.disk_usage(project_root or Path.cwd()).free / 1024**3
     add(Finding("disk", free_gb > 25, f"{free_gb:.1f} GB free (models + episodes need ~20 GB)"))

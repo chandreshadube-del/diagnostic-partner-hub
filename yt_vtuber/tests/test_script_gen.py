@@ -141,3 +141,79 @@ def test_a_scene_failing_the_critic_is_retried_alone(packet):
     # The scene was fixed in place; the other four were never regenerated.
     assert len(script.scenes) == 5
     assert any("critic" in n for n in notes)
+
+
+class _TerseWriter:
+    """Writes a fixed fraction of whatever length it is asked for.
+
+    The real 7B model undershoots every target, which is what makes a per-scene
+    length rejection so wasteful and a whole-episode sweep necessary.
+    """
+
+    name = "stub:terse"
+
+    def __init__(self, ratio: float = 0.6) -> None:
+        self.ratio = ratio
+        self.inner = None
+        self.targets_asked: list[int] = []
+
+    def json_complete(self, system, user, *, schema_hint, schema=None):  # noqa: ANN001
+        import re as _re
+
+        from vtuber.config import LLMConfig
+        from vtuber.llm import build
+
+        if self.inner is None:
+            self.inner = build(LLMConfig(backend="stub"), "writer")
+        if "state the angle" in user.lower():
+            return {"angle": "An angle long enough to satisfy the validator comfortably."}
+        m = _re.search(r"about (\d+) words", user)
+        asked = int(m.group(1)) if m else 24
+        self.targets_asked.append(asked)
+
+        out = self.inner.json_complete(system, user, schema_hint=schema_hint, schema=schema)
+        want = max(8, round(asked * self.ratio))
+        tail = ["which", "means", "it", "matters."]
+        words = [w for w in out["narration"].split() if w not in tail]
+        while len(words) < want - len(tail):
+            words.append("more")
+        out["narration"] = " ".join(words[: want - len(tail)] + tail)
+        assert len(out["narration"].split()) == want
+        return out
+
+
+def test_a_nineteen_word_scene_is_within_tolerance():
+    """19 words against a 19.5-word floor once discarded four good scenes."""
+    from vtuber.script_gen import LENGTH_TOLERANCE_LOW, ROLE_SPECS
+
+    assert ROLE_SPECS[2].words * LENGTH_TOLERANCE_LOW <= 19
+
+
+def test_a_terse_writer_triggers_a_length_sweep(packet):
+    writer = _TerseWriter(ratio=0.6)
+    try:
+        generate(writer, packet, ScriptConfig())
+    except ScriptGenerationError:
+        pass  # may still fall short; the sweep having run is the point
+    assert max(writer.targets_asked) > max(r.words for r in ROLE_SPECS), writer.targets_asked
+
+
+def test_a_cooperative_writer_needs_no_sweep(packet):
+    cfg = ScriptConfig()
+    writer = _TerseWriter(ratio=1.0)
+    script, notes = generate(writer, packet, cfg)
+    assert cfg.target_words_min <= script.word_count <= cfg.target_words_max
+    assert not any("length sweep" in n for n in notes), notes
+
+
+def test_a_writer_that_stays_short_fails_on_the_episode_total(packet):
+    """Each scene is within its own tolerance; only the sum is wrong."""
+    writer = _TerseWriter(ratio=0.55)
+    with pytest.raises(ScriptGenerationError, match="spoken words, need"):
+        generate(writer, packet, ScriptConfig())
+
+
+def test_a_scene_far_below_tolerance_still_fails_as_a_scene(packet):
+    writer = _TerseWriter(ratio=0.25)
+    with pytest.raises(ScriptGenerationError, match="failed after 3 attempts"):
+        generate(writer, packet, ScriptConfig())

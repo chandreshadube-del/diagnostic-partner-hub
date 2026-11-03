@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from pydantic import ValidationError
@@ -282,10 +282,12 @@ def _compact_errors(exc: ValidationError, limit: int = 4) -> str:
 # generation
 # --------------------------------------------------------------------------- #
 
-#: A scene within this fraction of its target is accepted; the whole-episode
-#: budget is what actually matters, and per-scene precision is not achievable.
-LENGTH_TOLERANCE_LOW = 0.65
-LENGTH_TOLERANCE_HIGH = 1.6
+#: A scene within this fraction of its target is accepted. The band is wide on
+#: purpose: the per-scene target is a guide, and the only number that has to
+#: hold is the episode total. A run once failed on a scene of 19 words against
+#: a 19.5-word floor, discarding four good scenes to do it.
+LENGTH_TOLERANCE_LOW = 0.5
+LENGTH_TOLERANCE_HIGH = 1.8
 
 
 def _generate_scene(
@@ -299,7 +301,10 @@ def _generate_scene(
     max_attempts: int,
     max_copied_run: int,
     notes: list[str],
+    words_override: int | None = None,
 ) -> Scene:
+    if words_override is not None:
+        spec = replace(spec, words=words_override)
     base = _scene_user(spec, index, packet, used_templates, previous)
     user = base
     last_error = "no attempt made"
@@ -458,6 +463,33 @@ def generate(
                 [s for i, s in enumerate(scenes) if i != index],
                 max_attempts=max_attempts, max_copied_run=cfg.max_copied_run_words,
                 notes=notes,
+            )
+
+    # Length is settled across the episode, not per scene: a scene a few words
+    # under its own target is fine if the others carry it.
+    for sweep in range(2):
+        total = sum(len(sc.narration.split()) for sc in scenes)
+        if cfg.target_words_min <= total <= cfg.target_words_max:
+            break
+        target_total = (cfg.target_words_min + cfg.target_words_max) // 2
+        gap = target_total - total
+        # Spread the correction over the two scenes furthest from their target.
+        ranked = sorted(
+            range(len(scenes)),
+            key=lambda i: len(scenes[i].narration.split()) - ROLE_SPECS[i].words,
+            reverse=gap < 0,
+        )
+        chosen = ranked[:2]
+        notes.append(f"length sweep {sweep + 1}: total {total}, adjusting scenes {chosen}")
+        for index in chosen:
+            spec = ROLE_SPECS[index]
+            current = len(scenes[index].narration.split())
+            scenes[index] = _generate_scene(
+                writer, spec, index, packet, [sc.template for sc in scenes],
+                [sc for i, sc in enumerate(scenes) if i != index],
+                max_attempts=max_attempts, max_copied_run=cfg.max_copied_run_words,
+                notes=notes,
+                words_override=max(12, current + round(gap / len(chosen))),
             )
 
     angle = _generate_angle(writer, scenes, packet)

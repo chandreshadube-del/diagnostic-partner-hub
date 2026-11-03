@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,7 +74,17 @@ def cmd_token(args: argparse.Namespace) -> int:
         delete_secret(KEY_GITHUB_TOKEN)
         print("GitHub token removed from the credential store")
         return 0
-    token = getpass.getpass("GitHub token (input hidden): ").strip()
+    if args.stdin:
+        # For terminals where a hidden prompt will not accept a paste:
+        #   Get-Clipboard | python -m vtuber token --stdin
+        token = sys.stdin.read().strip()
+    elif args.from_env:
+        token = (os.environ.get(args.from_env) or "").strip()
+        if not token:
+            print(f"environment variable {args.from_env} is empty or unset", file=sys.stderr)
+            return 1
+    else:
+        token = getpass.getpass("GitHub token (input hidden): ").strip()
     if not token:
         print("nothing entered", file=sys.stderr)
         return 1
@@ -317,6 +328,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     t = sub.add_parser("token", help="store a GitHub read-only token (raises 60/hr to 5000/hr)")
     t.add_argument("--delete", action="store_true", help="remove the stored token")
+    t.add_argument("--stdin", action="store_true",
+                   help="read the token from stdin instead of a hidden prompt")
+    t.add_argument("--from-env", metavar="VAR",
+                   help="read the token from this environment variable")
     t.set_defaults(func=cmd_token)
 
     au = sub.add_parser("auth", help="run the YouTube OAuth flow and print the channel")

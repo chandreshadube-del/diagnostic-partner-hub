@@ -99,7 +99,18 @@ read-only** and no account permissions, then:
 ```
 
 The token is verified against GitHub and stored in the Windows Credential
-Manager, never in a file. `vtuber token --delete` removes it. Without one, a run
+Manager, never in a file. `vtuber token --delete` removes it.
+
+The prompt hides what you type, and some Windows consoles will not paste into a
+hidden prompt. Two non-interactive routes exist for that:
+
+```powershell
+Get-Clipboard | .venv\Scripts\python -m vtuber token --stdin
+```
+
+```powershell
+$env:GH_PAT = Read-Host "token"; .venv\Scripts\python -m vtuber token --from-env GH_PAT; Remove-Item Env:\GH_PAT
+``` Without one, a run
 that finds the quota nearly spent skips the day rather than collecting half an
 evidence packet.
 

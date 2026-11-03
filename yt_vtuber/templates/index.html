@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VTuber Shorts stage</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <!-- Fixed 1080x1920 stage. Every pixel is a function of seekToTime(t);
+       nothing animates on its own, so frame N is identical on every render. -->
+  <div id="stage">
+    <div id="bg"></div>
+    <header id="topbar">
+      <span id="eyebrow">AI &amp; DEV TOOLS</span>
+      <span id="daystamp"></span>
+    </header>
+
+    <section id="scene" aria-live="off"></section>
+
+    <div id="avatar-wrap">
+      <canvas id="avatar" width="256" height="256"></canvas>
+      <div id="avatar-plate"><span id="pose-label"></span></div>
+    </div>
+
+    <div id="captions"><p id="caption-line"></p></div>
+
+    <footer id="footer">
+      <div id="progress"><div id="progress-fill"></div></div>
+      <div id="source-strip"></div>
+    </footer>
+  </div>
+  <script src="scenes/repo_overview.js"></script>
+  <script src="scenes/terminal_demo.js"></script>
+  <script src="scenes/comparison.js"></script>
+  <script src="scenes/architecture.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -86,6 +86,23 @@ declares and a link to the licence file, and writes the revision into
 outside a short permissive list, unless you pass `--accept-license <id>` to say
 you have read it.
 
+## A GitHub token (strongly recommended)
+
+Unauthenticated, the GitHub API allows **60 requests an hour**, which one run
+can plausibly exhaust. A read-only token raises that to 5,000. Create a
+fine-grained personal access token at
+https://github.com/settings/personal-access-tokens with **public repositories,
+read-only** and no account permissions, then:
+
+```powershell
+.venv\Scripts\python -m vtuber token
+```
+
+The token is verified against GitHub and stored in the Windows Credential
+Manager, never in a file. `vtuber token --delete` removes it. Without one, a run
+that finds the quota nearly spent skips the day rather than collecting half an
+evidence packet.
+
 ## First run
 
 ```powershell
@@ -178,6 +195,7 @@ exists to keep it that way.
 |---|---|
 | `vtuber doctor` | inspect the machine, list blockers |
 | `vtuber bootstrap` | pin the TTS model revision after reading its licence |
+| `vtuber token` | store a GitHub read-only token (60/hr → 5000/hr) |
 | `vtuber avatar` | regenerate the sprite sheet |
 | `vtuber run` | generate and validate one episode, no upload |
 | `vtuber rerender <id>` | re-render an existing episode |

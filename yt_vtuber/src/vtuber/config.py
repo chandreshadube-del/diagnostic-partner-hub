@@ -29,6 +29,11 @@ class DiscoveryConfig(Base):
     cooldown_days: int = 120
     min_stars: int = 300
     max_candidates: int = 40
+    #: How many top-ranked candidates get a `releases/latest` request. Each one
+    #: costs a request, and an unauthenticated client only has 60 per hour.
+    release_probe_top_n: int = 10
+    #: Refuse to start a run with less core quota than this left.
+    min_core_quota: int = 25
     #: Licences we are willing to quote from. ``None`` entry allows unlicensed
     #: repos to be discussed but never quoted.
     require_license: bool = True

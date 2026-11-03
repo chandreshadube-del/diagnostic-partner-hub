@@ -125,6 +125,23 @@ def run(project_root: Path | None = None) -> Report:
                           "(the pipeline talks to it on 127.0.0.1:11434 only)",
                 blocking=True))
 
+    # GitHub quota: not a blocker (it refills), but the single most likely
+    # reason a run skips the day.
+    try:
+        from .github_api import GitHub
+
+        with GitHub() as gh:
+            core, search = gh.remaining()
+        add(Finding(
+            "github.quota",
+            core >= 25,
+            f"{core} core / {search} search requests left this hour"
+            + ("" if gh.authenticated else " — unauthenticated (60/hour). `vtuber token` raises it to 5000"),
+            blocking=False,
+        ))
+    except Exception as exc:  # noqa: BLE001
+        add(Finding("github.quota", False, f"could not reach api.github.com: {exc}", blocking=False))
+
     free_gb = shutil.disk_usage(project_root or Path.cwd()).free / 1024**3
     add(Finding("disk", free_gb > 25, f"{free_gb:.1f} GB free (models + episodes need ~20 GB)"))
 

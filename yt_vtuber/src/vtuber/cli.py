@@ -61,6 +61,33 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_token(args: argparse.Namespace) -> int:
+    """Store a GitHub read-only token so discovery is not capped at 60/hour."""
+    import getpass
+
+    from .github_api import GitHub
+    from .secrets_store import KEY_GITHUB_TOKEN, delete_secret, set_secret
+
+    _cfg(args)
+    if args.delete:
+        delete_secret(KEY_GITHUB_TOKEN)
+        print("GitHub token removed from the credential store")
+        return 0
+    token = getpass.getpass("GitHub token (input hidden): ").strip()
+    if not token:
+        print("nothing entered", file=sys.stderr)
+        return 1
+    with GitHub(token=token) as gh:
+        try:
+            core, search = gh.remaining()
+        except Exception as exc:  # noqa: BLE001
+            print(f"token rejected by GitHub: {exc}", file=sys.stderr)
+            return 1
+    set_secret(KEY_GITHUB_TOKEN, token)
+    print(f"stored. quota now {core} core / {search} search per hour")
+    return 0
+
+
 def cmd_auth(args: argparse.Namespace) -> int:
     cfg = _cfg(args)
     svc = youtube.service(interactive=True)
@@ -287,6 +314,10 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--model-repo")
     b.add_argument("--accept-license", help="licence id you have read and accept")
     b.set_defaults(func=cmd_bootstrap)
+
+    t = sub.add_parser("token", help="store a GitHub read-only token (raises 60/hr to 5000/hr)")
+    t.add_argument("--delete", action="store_true", help="remove the stored token")
+    t.set_defaults(func=cmd_token)
 
     au = sub.add_parser("auth", help="run the YouTube OAuth flow and print the channel")
     au.set_defaults(func=cmd_auth)

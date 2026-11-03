@@ -247,3 +247,31 @@ def test_bootstrap_accepts_apache():
 
     check_license(ModelPin(repo_id="x/y", revision="abc",
                            license_id="apache-2.0", license_url="u"))
+
+
+def test_run_skips_when_the_github_quota_is_nearly_gone(cfg, tmp_path, monkeypatch):
+    """Better to skip the day than half-collect an evidence packet."""
+    from vtuber import pipeline
+    from vtuber.ledger import Ledger
+    from vtuber.state import EpisodeStore
+
+    class StarvedGitHub:
+        authenticated = False
+
+        def remaining(self):  # noqa: ANN202
+            return (3, 0)
+
+        def __enter__(self):  # noqa: ANN204
+            return self
+
+        def __exit__(self, *exc):  # noqa: ANN002, ANN204
+            return None
+
+    monkeypatch.setattr(pipeline, "GitHub", StarvedGitHub)
+    ctx = pipeline.RunContext(
+        cfg=cfg,
+        store=EpisodeStore(cfg.episodes_dir),
+        ledger=Ledger(cfg.state_dir / "l.sqlite3"),
+    )
+    with pytest.raises(pipeline.PipelineSkip, match="GitHub core requests left"):
+        pipeline.stage_discover(ctx)

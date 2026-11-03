@@ -98,8 +98,21 @@ def stage_discover(ctx: RunContext, *, force_repo: str | None = None) -> tuple[E
     cfg = ctx.cfg
     excluded = ctx.ledger.recently_used(cfg.discovery.cooldown_days)
     with GitHub() as gh:
+        core, search = gh.remaining()
         if not gh.authenticated:
-            log.warning("no GitHub token; unauthenticated rate limits apply")
+            log.warning(
+                "no GitHub token: unauthenticated quota is 60 requests/hour "
+                "(%d core, %d search left). Run `vtuber token` to store one.",
+                core, search,
+            )
+        else:
+            log.info("GitHub quota: %d core, %d search", core, search)
+        if core < cfg.discovery.min_core_quota:
+            raise PipelineSkip(
+                f"only {core} GitHub core requests left (need "
+                f"{cfg.discovery.min_core_quota}); skipping rather than half-collecting "
+                f"evidence. Store a token with `vtuber token` to raise the limit to 5000/hour."
+            )
         if force_repo:
             data = gh.repo(force_repo)
             from .discover import score_candidate, to_candidate

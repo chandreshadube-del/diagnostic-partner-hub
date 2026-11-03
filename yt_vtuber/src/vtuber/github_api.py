@@ -44,7 +44,16 @@ def _utcnow() -> datetime:
 
 class GitHub:
     def __init__(self, token: str | None = None, timeout: float = 30.0) -> None:
-        token = token or os.environ.get("VTUBER_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
+        if token is None:
+            token = os.environ.get("VTUBER_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN")
+        if token is None:
+            # Stored by `vtuber token`, in the OS credential store.
+            try:
+                from .secrets_store import KEY_GITHUB_TOKEN, get_secret
+
+                token = get_secret(KEY_GITHUB_TOKEN)
+            except Exception as exc:  # noqa: BLE001 - a missing backend is not fatal
+                log.debug("no keyring GitHub token: %s", exc)
         headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
@@ -101,8 +110,11 @@ class GitHub:
         return content, data.get("html_url") or f"https://github.com/{full_name}#readme"
 
     def latest_release(self, full_name: str) -> dict | None:
+        """``None`` means the repo has no release — never "we ran out of quota"."""
         try:
             return self._get(f"/repos/{full_name}/releases/latest").json()
+        except RateLimited:
+            raise
         except GitHubError as exc:
             log.debug("no latest release for %s: %s", full_name, exc)
             return None
@@ -110,11 +122,21 @@ class GitHub:
     def license(self, full_name: str) -> dict | None:
         try:
             return self._get(f"/repos/{full_name}/license").json()
+        except RateLimited:
+            raise
         except GitHubError:
             return None
 
     def rate_limit(self) -> dict:
         return self._get("/rate_limit").json()
+
+    def remaining(self) -> tuple[int, int]:
+        """(core_remaining, search_remaining). ``/rate_limit`` is itself free."""
+        res = self.rate_limit().get("resources", {})
+        return (
+            int(res.get("core", {}).get("remaining", 0)),
+            int(res.get("search", {}).get("remaining", 0)),
+        )
 
     def provenance_for(self, url: str) -> tuple[datetime, str] | None:
         if url in self.provenance:

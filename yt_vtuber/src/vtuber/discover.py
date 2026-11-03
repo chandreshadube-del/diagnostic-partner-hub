@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from .config import DiscoveryConfig
-from .github_api import GitHub, GitHubError
+from .github_api import GitHub, GitHubError, RateLimited
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +46,7 @@ def _recency_points(when: datetime | None, half_life_days: float) -> float:
 
 
 def score_candidate(c: Candidate) -> Candidate:
+    """Recompute ``score`` and ``reasons`` in place; safe to call twice."""
     """Rank on activity, release recency and documentation — not popularity alone.
 
     Stars contribute only a damped signal so the same handful of mega-repos do
@@ -54,18 +55,20 @@ def score_candidate(c: Candidate) -> Candidate:
     push = _recency_points(c.pushed_at, half_life_days=10)
     release = _recency_points(c.release_published_at, half_life_days=45)
     docs = 0.0
+    reasons: list[str] = []
     if c.homepage:
         docs += 0.5
-        c.reasons.append("has official homepage/docs")
+        reasons.append("has official homepage/docs")
     if c.license_spdx:
         docs += 0.5
-        c.reasons.append(f"licensed {c.license_spdx}")
+        reasons.append(f"licensed {c.license_spdx}")
     stars = min(c.stars, 50_000) ** 0.25 / 15.0
     topical = 0.3 if any(t in {"llm", "ai", "agents", "ai-agents", "rag", "developer-tools"} for t in c.topics) else 0.0
     c.score = round(3.0 * push + 2.0 * release + 1.0 * docs + stars + topical, 4)
-    c.reasons.append(f"pushed {c.pushed_at.date() if c.pushed_at else 'unknown'}")
+    reasons.append(f"pushed {c.pushed_at.date() if c.pushed_at else 'unknown'}")
     if c.release_tag:
-        c.reasons.append(f"release {c.release_tag}")
+        reasons.append(f"release {c.release_tag}")
+    c.reasons = reasons
     return c
 
 
@@ -118,15 +121,39 @@ def discover(
                 continue
             seen[name] = item
 
+    # First pass: rank on what the search response already told us. The search
+    # payload carries pushed_at, stars, topics, licence and homepage, so no
+    # extra request is needed to get a sensible ordering.
     candidates: list[Candidate] = []
     for name, item in seen.items():
-        release = gh.latest_release(name)
-        cand = score_candidate(to_candidate(item, release))
+        cand = score_candidate(to_candidate(item, release=None))
         if cfg.require_license and not cand.license_spdx:
             log.debug("skip %s: no detected licence", name)
             continue
         candidates.append(cand)
-
     candidates.sort(key=lambda c: c.score, reverse=True)
-    log.info("discovered %d ranked candidates (from %d raw)", len(candidates), len(seen))
+
+    # Second pass: release recency is worth a request, but only for the handful
+    # that could actually win. Probing all of them costs one request each and
+    # will exhaust an unauthenticated quota (60/hour) before evidence
+    # collection even starts.
+    probed = 0
+    for cand in candidates[: cfg.release_probe_top_n]:
+        try:
+            release = gh.latest_release(cand.full_name)
+        except RateLimited as exc:
+            log.warning("rate limited after probing %d releases: %s", probed, exc)
+            break
+        probed += 1
+        if release:
+            cand.has_release = True
+            cand.release_tag = release.get("tag_name")
+            cand.release_published_at = _parse(release.get("published_at"))
+            score_candidate(cand)
+    candidates.sort(key=lambda c: c.score, reverse=True)
+
+    log.info(
+        "discovered %d ranked candidates (from %d raw, %d release probes)",
+        len(candidates), len(seen), probed,
+    )
     return candidates
